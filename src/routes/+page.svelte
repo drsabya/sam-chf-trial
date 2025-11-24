@@ -1,6 +1,6 @@
-<!-- src/routes/+page.svelte -->
 <script lang="ts">
 	import { supabase } from '$lib/supabaseClient';
+	import { fly } from 'svelte/transition';
 
 	let file: File | null = null;
 	let uploading = false;
@@ -10,7 +10,7 @@
 		message = '';
 
 		if (!file) {
-			message = 'Please choose a file first.';
+			message = 'Please select a file first.';
 			return;
 		}
 
@@ -52,8 +52,7 @@
 
 			if (error) throw new Error(error.message);
 
-			message =
-				'✅ Uploaded to R2 and inserted in lab_reports.\nBackground Gemini processing started.';
+			message = 'Analysis started. Processing in background.';
 
 			// 4) Fire-and-forget Gemini processing
 			if (inserted?.id) {
@@ -69,86 +68,99 @@
 			const input = document.getElementById('file-input') as HTMLInputElement;
 			if (input) input.value = '';
 		} catch (err: any) {
-			message = `❌ Error: ${err.message}`;
+			message = `Error: ${err.message}`;
 		} finally {
 			uploading = false;
 		}
 	}
 </script>
 
-<main class="max-w-2xl mx-auto mt-12 p-6 rounded-2xl border border-emerald-200 bg-white shadow-md">
-	<!-- Header -->
-	<div class="flex items-center justify-between mb-6">
-		<div>
-			<h1 class="text-2xl font-semibold text-emerald-800">SAM-CHF Tools</h1>
-			<p class="text-sm text-gray-600 mt-1">Upload lab reports and manage trial leads.</p>
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans text-slate-800">
+	<div class="max-w-lg mx-auto">
+		<div
+			class="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden border border-gray-100"
+		>
+			<div class="px-8 pt-10 pb-6">
+				<h1 class="text-3xl font-light tracking-tight text-emerald-900 mb-2">SAM-CHF</h1>
+				<p class="text-sm text-gray-500 leading-relaxed">
+					Upload patient lab reports for automated extraction of Homocysteine, TSH, and BNP via
+					Gemini AI.
+				</p>
+			</div>
+
+			<div class="px-8 pb-8">
+				<div class="space-y-6">
+					<div class="relative group">
+						<input
+							id="file-input"
+							type="file"
+							accept=".pdf,.jpg,.png"
+							class="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-3 file:px-6
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-medium
+                                file:bg-emerald-50 file:text-emerald-700
+                                hover:file:bg-emerald-100
+                                file:transition file:duration-200
+                                file:cursor-pointer cursor-pointer
+                                focus:outline-none"
+							on:change={(e) => {
+								const target = e.currentTarget as HTMLInputElement;
+								file = target.files?.[0] ?? null;
+								message = '';
+							}}
+						/>
+					</div>
+
+					<button
+						type="button"
+						on:click={handleUpload}
+						disabled={uploading || !file}
+						class="w-full py-3.5 px-4 rounded-xl text-emerald-900 text-sm font-medium border border-emerald-100 bg-emerald-50
+                               transition-all duration-200 ease-in-out
+                               hover:bg-emerald-100 hover:border-emerald-200
+                               disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+					>
+						{uploading ? 'Processing Report...' : 'Upload & Analyze'}
+					</button>
+				</div>
+
+				{#if message}
+					<div
+						in:fly={{ y: 10, duration: 300 }}
+						class="mt-6 p-4 rounded-xl text-sm border flex items-start gap-3
+                        {message.startsWith('Error')
+							? 'bg-red-50 text-red-700 border-red-100'
+							: 'bg-emerald-50 text-emerald-800 border-emerald-100'}"
+					>
+						<span class="text-lg leading-none mt-0.5">
+							{message.startsWith('Error') ? '✕' : '✓'}
+						</span>
+						<p class="font-medium">{message}</p>
+					</div>
+				{/if}
+			</div>
+
+			<div class="bg-gray-50 px-8 py-6 border-t border-gray-100">
+				<div class="grid grid-cols-2 gap-4">
+					<a
+						href="/leads"
+						class="flex items-center justify-center px-4 py-3 rounded-xl bg-white border border-gray-200
+                               text-gray-600 text-sm font-medium transition-all hover:border-emerald-300 hover:text-emerald-700 hover:shadow-sm"
+					>
+						View Leads
+					</a>
+					<a
+						href="/screening"
+						class="flex items-center justify-center px-4 py-3 rounded-xl text-white text-sm font-medium shadow-lg shadow-emerald-600/20
+                               bg-emerald-600 transition-all duration-200 hover:bg-emerald-700 hover:shadow-emerald-600/30 hover:-translate-y-0.5"
+					>
+						+ New screening
+					</a>
+				</div>
+			</div>
 		</div>
 
-		<!-- Leads Button -->
-		<a
-			href="/leads"
-			class="px-4 py-2 rounded-full border border-emerald-400 text-emerald-700 bg-emerald-50 text-sm font-medium hover:bg-emerald-100 transition"
-		>
-			Leads
-		</a>
+		<p class="text-center text-xs text-gray-400 mt-8">Secure R2 Storage • Gemini Processing</p>
 	</div>
-
-	<!-- Uploader Card -->
-	<div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
-		<h2 class="text-emerald-700 text-lg font-semibold mb-1">R2 + Gemini Lab Report Uploader</h2>
-		<p class="text-emerald-700 text-sm">
-			Upload a lab report. R2 stores it and Gemini extracts <strong>Homocysteine</strong>,
-			<strong>TSH</strong>, <strong>BNP</strong>.
-		</p>
-	</div>
-
-	<!-- File Input -->
-	<div class="flex flex-col gap-3">
-		<input
-			id="file-input"
-			type="file"
-			class="border rounded-lg px-3 py-2 text-sm"
-			on:change={(e) => {
-				const target = e.currentTarget as HTMLInputElement;
-				file = target.files?.[0] ?? null;
-				message = '';
-			}}
-		/>
-
-		<div class="flex gap-3 flex-wrap">
-			<!-- Upload Button -->
-			<button
-				type="button"
-				on:click={handleUpload}
-				disabled={uploading}
-				class="px-5 py-2.5 rounded-full text-white font-medium text-sm shadow-md transition
-				       bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300"
-			>
-				{uploading ? 'Uploading…' : 'Upload report'}
-			</button>
-
-			<!-- Leads Button -->
-			<a
-				href="/leads"
-				class="px-5 py-2.5 rounded-full border border-emerald-300 text-emerald-700 bg-white text-sm font-medium hover:bg-emerald-50 transition"
-			>
-				Go to Leads
-			</a>
-		</div>
-	</div>
-
-	<!-- Message -->
-	{#if message}
-		<p
-			class="mt-4 text-sm whitespace-pre-wrap px-3 py-2 rounded-lg border"
-			class:bg-red-50={message.startsWith('❌')}
-			class:text-red-700={message.startsWith('❌')}
-			class:border-red-200={message.startsWith('❌')}
-			class:bg-emerald-50={!message.startsWith('❌')}
-			class:text-emerald-800={!message.startsWith('❌')}
-			class:border-emerald-200={!message.startsWith('❌')}
-		>
-			{message}
-		</p>
-	{/if}
-</main>
+</div>

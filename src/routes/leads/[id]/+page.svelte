@@ -1,12 +1,14 @@
-<!-- src/routes/leads/[id]/+page.svelte -->
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
-	import { Phone } from '@lucide/svelte';
+	import { Phone, Calendar, UserX, CheckCircle2 } from '@lucide/svelte';
+	import { fade } from 'svelte/transition';
 
 	let { data, form }: { data: PageData; form: ActionData | null } = $props();
 
+	// Prefer updated lead from the action response if present
 	const lead = (form?.lead as any) ?? data.lead;
 
+	// Helper: Formats date for display
 	function formatDateTime(value: string | null | undefined) {
 		if (!value) return 'Not scheduled';
 		const d = new Date(value);
@@ -18,6 +20,7 @@
 		});
 	}
 
+	// Helper: Formats date for input[type="date"]
 	function toDateInputValue(value: string | null | undefined) {
 		if (!value) return '';
 		const d = new Date(value);
@@ -30,172 +33,227 @@
 	const phoneValue = (form?.values?.phone as string | undefined) ?? lead.phone ?? '';
 
 	/* =============================
-	   Checkbox Logic (Inversion)
-	   patient_unwilling checkbox ON → patient_willing = false
-	   patient_unwilling checkbox OFF → patient_willing = true/null
-	================================*/
-	let wasCalledChecked =
+       State Logic
+    ================================*/
+
+	// "Patient contacted" checkbox
+	let wasCalledChecked = $state(
 		form?.values?.was_called !== undefined
 			? Boolean(form.values.was_called)
-			: Boolean(lead.was_called);
+			: Boolean(lead.was_called)
+	);
 
-	let patientUnwilling =
+	// "Patient willing" checkbox (positive semantics)
+	let patientWillingChecked = $state(
 		form?.values?.patient_willing !== undefined
-			? !Boolean(form.values.patient_willing)
-			: lead.patient_willing === false;
+			? Boolean(form.values.patient_willing)
+			: lead.patient_willing === true
+	);
 
-	let scheduledOnValue =
-		(form?.values?.scheduled_on as string | undefined) ?? toDateInputValue(lead.scheduled_on);
+	// Date value for scheduling
+	let scheduledOnValue = $state(
+		(form?.values?.scheduled_on as string | undefined) ?? toDateInputValue(lead.scheduled_on)
+	);
 </script>
 
-<main class="max-w-xl mx-auto px-4 pt-10 pb-12">
-	<div class="space-y-6">
-		<!-- Header -->
-		<section class="bg-white border border-emerald-100 rounded-2xl shadow-sm p-6 space-y-3">
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans text-slate-800">
+	<div class="max-w-lg mx-auto">
+		<div class="mb-6">
 			<a
 				href="/leads"
-				class="inline-flex items-center text-xs font-medium text-emerald-700 hover:text-emerald-800"
+				class="inline-flex items-center text-sm font-medium text-gray-400 hover:text-emerald-700 transition-colors"
 			>
-				<span class="mr-1.5">&larr;</span> Back to leads
+				← Back to Leads
 			</a>
+		</div>
 
-			<p class="text-xs text-emerald-700 font-medium uppercase tracking-wide">Lead details</p>
+		<div
+			class="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden border border-gray-100"
+		>
+			<div class="px-8 pt-10 pb-6 border-b border-gray-50 bg-slate-50/30">
+				<div class="flex justify-between items-start">
+					<div>
+						<h1 class="text-2xl font-light text-emerald-900">{lead.name}</h1>
+						{#if lead.phone}
+							<a
+								href={`tel:${lead.phone}`}
+								class="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-emerald-600 mt-1 transition-colors"
+							>
+								<Phone class="w-3.5 h-3.5" />
+								<span>{lead.phone}</span>
+							</a>
+						{/if}
+					</div>
 
-			<h1 class="text-2xl font-semibold text-gray-900">
-				{lead.name}
-			</h1>
-
-			{#if lead.phone}
-				<a
-					href={`tel:${lead.phone}`}
-					class="inline-flex items-center gap-2 text-sm font-medium text-emerald-700 hover:text-emerald-800 mt-1"
-				>
-					<Phone class="w-4 h-4" />
-					<span>{lead.phone}</span>
-				</a>
-			{/if}
-
-			<div class="flex flex-wrap items-center gap-3 text-sm text-gray-600 mt-2">
-				<!-- Called Chip -->
-				<div class="inline-flex items-center gap-1.5">
-					<span
-						class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium border"
-						class:bg-emerald-50={lead.was_called}
-						class:text-emerald-700={lead.was_called}
-						class:border-emerald-200={lead.was_called}
-						class:bg-amber-50={!lead.was_called}
-						class:text-amber-700={!lead.was_called}
-						class:border-amber-200={!lead.was_called}
-					>
-						{lead.was_called ? 'Called' : 'Not called yet'}
-					</span>
-				</div>
-
-				<!-- Patient willingness chip -->
-				<div class="inline-flex items-center gap-1.5">
-					<span
-						class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium border"
-						class:bg-emerald-50={lead.patient_willing === true}
-						class:text-emerald-700={lead.patient_willing === true}
-						class:border-emerald-200={lead.patient_willing === true}
-						class:bg-amber-50={lead.patient_willing === false}
-						class:text-amber-700={lead.patient_willing === false}
-						class:border-amber-200={lead.patient_willing === false}
-						class:bg-slate-50={lead.patient_willing == null}
-						class:text-slate-700={lead.patient_willing == null}
-						class:border-slate-200={lead.patient_willing == null}
-					>
-						{lead.patient_willing === true
-							? 'Willing'
-							: lead.patient_willing === false
-								? 'Unwilling'
-								: 'Not assessed'}
-					</span>
+					<div class="text-right">
+						{#if lead.patient_willing === false}
+							<span
+								class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100"
+							>
+								Unwilling
+							</span>
+						{:else if lead.scheduled_on}
+							<span
+								class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200"
+							>
+								Scheduled
+							</span>
+						{:else if lead.was_called}
+							<span
+								class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100"
+							>
+								Contacted
+							</span>
+						{:else}
+							<span
+								class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-100"
+							>
+								New Lead
+							</span>
+						{/if}
+					</div>
 				</div>
 			</div>
-		</section>
 
-		<!-- Edit form -->
-		<section class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 space-y-4">
-			<h2 class="text-sm font-semibold text-gray-800">Call planning</h2>
+			<div class="p-8">
+				<form method="POST" action="?/update" class="space-y-8">
+					<!-- Contact details -->
+					<div class="space-y-3">
+						<label for="phone" class="text-sm font-bold tracking-wide text-gray-400 uppercase">
+							Contact Details
+						</label>
+						<div class="relative">
+							<div
+								class="absolute left-4 top-3.5 text-gray-400 text-sm pointer-events-none select-none"
+							>
+								<Phone class="w-4 h-4" />
+							</div>
+							<input
+								id="phone"
+								name="phone"
+								type="tel"
+								required
+								inputmode="numeric"
+								pattern="[0-9]*"
+								class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-slate-800 focus:outline-none focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50/50 transition-all duration-200"
+								placeholder="Phone Number"
+								value={phoneValue}
+							/>
+						</div>
+					</div>
 
-			<form method="POST" action="?/update" class="space-y-5">
-				<!-- Phone -->
-				<div class="space-y-1.5">
-					<label for="phone" class="text-sm font-medium text-gray-700"
-						>Phone <span class="text-red-500">*</span></label
+					<!-- Call outcome -->
+					<div class="space-y-3">
+						<h3 class="text-sm font-bold tracking-wide text-gray-400 uppercase">Call Outcome</h3>
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+							<!-- Patient contacted -->
+							<label
+								class="relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border cursor-pointer transition-all duration-200 select-none text-center h-28
+                                {wasCalledChecked
+									? 'bg-emerald-50/50 border-emerald-200 shadow-sm'
+									: 'bg-white border-gray-100 hover:border-emerald-200 hover:bg-gray-50'}"
+							>
+								<input
+									type="checkbox"
+									name="was_called"
+									bind:checked={wasCalledChecked}
+									class="absolute opacity-0 w-0 h-0"
+								/>
+								<div
+									class="p-2 rounded-full {wasCalledChecked
+										? 'bg-emerald-100 text-emerald-700'
+										: 'bg-gray-100 text-gray-400'}"
+								>
+									<CheckCircle2 class="w-5 h-5" />
+								</div>
+								<span
+									class="text-xs font-bold {wasCalledChecked
+										? 'text-emerald-900'
+										: 'text-gray-500'}"
+								>
+									Patient Contacted
+								</span>
+							</label>
+
+							<!-- Patient willing -->
+							<label
+								class="relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border cursor-pointer transition-all duration-200 select-none text-center h-28
+                                {patientWillingChecked
+									? 'bg-emerald-50/50 border-emerald-200 shadow-sm'
+									: 'bg-white border-gray-100 hover:border-emerald-200 hover:bg-gray-50'}"
+							>
+								<input
+									type="checkbox"
+									name="patient_willing"
+									bind:checked={patientWillingChecked}
+									class="absolute opacity-0 w-0 h-0"
+								/>
+								<div
+									class="p-2 rounded-full {patientWillingChecked
+										? 'bg-emerald-100 text-emerald-700'
+										: 'bg-gray-100 text-gray-400'}"
+								>
+									<UserX class="w-5 h-5" />
+								</div>
+								<span
+									class="text-xs font-bold {patientWillingChecked
+										? 'text-emerald-900'
+										: 'text-gray-500'}"
+								>
+									Patient Willing
+								</span>
+							</label>
+						</div>
+					</div>
+
+					<!-- Scheduling -->
+					<div class="space-y-3">
+						<label
+							for="scheduled_on"
+							class="text-sm font-bold tracking-wide text-gray-400 uppercase"
+						>
+							Scheduling
+						</label>
+						<div class="relative">
+							<div class="absolute left-4 top-3.5 text-gray-400 pointer-events-none">
+								<Calendar class="w-4 h-4" />
+							</div>
+							<input
+								id="scheduled_on"
+								name="scheduled_on"
+								type="date"
+								bind:value={scheduledOnValue}
+								disabled={!patientWillingChecked}
+								class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-slate-800 focus:outline-none focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50/50 transition-all duration-200 {patientWillingChecked
+									? ''
+									: 'opacity-60 cursor-not-allowed'}"
+							/>
+						</div>
+						<p class="text-xs text-right text-gray-400 pr-1">
+							Current: {formatDateTime(lead.scheduled_on)}
+						</p>
+						<p class="text-[11px] text-right text-gray-400 pr-1">
+							Note: Scheduling is only saved if patient is marked as willing.
+						</p>
+					</div>
+
+					{#if form?.message}
+						<div
+							transition:fade
+							class="text-sm px-4 py-3 rounded-xl border bg-red-50 border-red-100 text-red-800"
+						>
+							{form.message}
+						</div>
+					{/if}
+
+					<button
+						type="submit"
+						class="w-full py-4 rounded-xl text-sm font-bold tracking-wide shadow-lg shadow-emerald-900/20 bg-emerald-700 text-white hover:bg-emerald-800 hover:shadow-emerald-900/30 hover:-translate-y-0.5 transition-all duration-300 ease-out"
 					>
-					<input
-						id="phone"
-						name="phone"
-						type="tel"
-						required
-						inputmode="numeric"
-						pattern="[0-9]*"
-						class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"
-						placeholder="Update phone number"
-						value={phoneValue}
-					/>
-				</div>
-
-				<!-- Patient called (emerald checkbox, label toggles) -->
-				<div class="flex items-center gap-3">
-					<input
-						id="was_called"
-						name="was_called"
-						type="checkbox"
-						bind:checked={wasCalledChecked}
-						class="h-5 w-5 rounded border-gray-400 accent-emerald-600 focus:ring-emerald-600 focus:ring-2"
-					/>
-					<label for="was_called" class="text-sm font-medium text-gray-700"> Patient called </label>
-				</div>
-
-				<!-- Patient UNWILLING (red checkbox, normal label, label toggles) -->
-				<div class="flex items-center gap-3">
-					<input
-						id="patient_unwilling"
-						name="patient_willing"
-						type="checkbox"
-						bind:checked={patientUnwilling}
-						class="h-5 w-5 accent-red-600 border-gray-300 focus:ring-red-500 focus:ring-2"
-					/>
-					<label for="patient_unwilling" class="text-sm font-medium text-gray-700">
-						Patient unwilling
-					</label>
-				</div>
-
-				<!-- Scheduled date -->
-				<div class="space-y-1.5">
-					<label for="scheduled_on" class="text-sm font-medium text-gray-700">
-						Scheduled on <span class="text-gray-400 text-xs">(optional)</span>
-					</label>
-					<input
-						id="scheduled_on"
-						name="scheduled_on"
-						type="date"
-						bind:value={scheduledOnValue}
-						class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"
-					/>
-					<p class="text-xs text-gray-400">
-						Current: {formatDateTime(lead.scheduled_on)}
-					</p>
-				</div>
-
-				<!-- Messages -->
-				{#if form?.message}
-					<p class="text-sm px-3 py-2 rounded-lg border bg-red-50 text-red-700 border-red-300">
-						{form.message}
-					</p>
-				{/if}
-
-				<!-- Save -->
-				<button
-					type="submit"
-					class="w-full rounded-full px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700"
-				>
-					Save changes
-				</button>
-			</form>
-		</section>
+						SAVE CHANGES
+					</button>
+				</form>
+			</div>
+		</div>
 	</div>
-</main>
+</div>

@@ -1,7 +1,6 @@
-<!-- src/lib/components/general/Header.svelte -->
 <script lang="ts">
-	import { Menu, LogOut } from '@lucide/svelte';
 	import { navigating } from '$app/stores';
+	import { LogOut, Menu } from '@lucide/svelte';
 
 	let { user } = $props();
 	let isNavOpen = $state(false);
@@ -79,7 +78,12 @@
 
 		<!-- Emerald animated bottom loader while navigating -->
 		{#if $navigating}
-			<div class="relative h-0.5 overflow-hidden">
+			<div class="relative h-0.5 overflow-hidden w-full">
+				<!-- 
+                     w-1/3 means the bar is 33% of the screen.
+                     To traverse the full 100% parent width, it needs to move 3x its own width.
+                     We use 400% in the keyframes to ensure it clears the screen edges completely.
+                -->
 				<div class="absolute inset-y-0 left-0 w-1/3 bg-emerald-500 animate-nav-loader" />
 			</div>
 		{/if}
@@ -89,17 +93,24 @@
 <style>
 	@keyframes nav-loader {
 		0% {
+			/* Start fully off-screen to the left */
 			transform: translateX(-100%);
 		}
 		50% {
-			transform: translateX(100%);
+			/* Move fully to the right. 
+               Since width is 1/3 (33%), 100% parent width equals 300% element width.
+               We use 400% to ensure it fully exits the right side before turning back.
+            */
+			transform: translateX(400%);
 		}
 		100% {
+			/* Return to start */
 			transform: translateX(-100%);
 		}
 	}
 
 	.animate-nav-loader {
-		animation: nav-loader 1.1s ease-in-out infinite;
+		/* Slightly slower (2s) for a smoother full-screen sweep */
+		animation: nav-loader 2s ease-in-out infinite;
 	}
 </style>
