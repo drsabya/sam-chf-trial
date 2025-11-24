@@ -1,5 +1,7 @@
+<!-- src/routes/screening/+page.svelte -->
 <script lang="ts">
 	import { fade, scale } from 'svelte/transition';
+	import { goto } from '$app/navigation';
 
 	let c1 = $state(false);
 	let c2 = $state(false);
@@ -7,19 +9,77 @@
 
 	const canGenerate = $derived(c1 && c2);
 
+	let loading = $state(false);
+	let errorMessage = $state<string | null>(null);
+	let successMessage = $state<string | null>(null);
+
 	// Step 1: User clicks button, open dialog
 	function handleInitialClick() {
-		if (!canGenerate) return;
+		if (!canGenerate || loading) return;
 		showConfirmation = true;
 	}
 
 	// Step 2: User confirms in dialog, execute logic
-	function handleConfirmGenerate() {
-		console.log('Generate Screening ID');
-		showConfirmation = false;
+	async function handleConfirmGenerate() {
+		if (!canGenerate || loading) return;
+
+		loading = true;
+		errorMessage = null;
+		successMessage = null;
+
+		try {
+			// 1️⃣ Create participant with next screening_id
+			const participantRes = await fetch('/apis/participants/create', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' }
+			});
+
+			if (!participantRes.ok) {
+				const body = await participantRes.json().catch(() => null);
+				throw new Error(body?.error ?? 'Failed to create participant');
+			}
+
+			const { participant } = await participantRes.json();
+			if (!participant?.id) {
+				throw new Error('Participant creation response is missing id');
+			}
+
+			// 2️⃣ Create Visit 1 for this participant
+			const visitRes = await fetch('/apis/visits/visit1/create', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ participantId: participant.id })
+			});
+
+			if (!visitRes.ok) {
+				const body = await visitRes.json().catch(() => null);
+				throw new Error(body?.error ?? 'Failed to create Visit 1');
+			}
+
+			const { visit } = await visitRes.json();
+
+			const screeningLabel =
+				participant.screening_id ?? participant.screeningId ?? 'new participant';
+
+			// Optional: keep this for console debugging
+			console.log('Created participant & visit:', { participant, visit });
+
+			// ✅ Navigate straight to participant details page
+			await goto(`/participants/${participant.id}`);
+		} catch (err) {
+			console.error('Error generating screening ID:', err);
+			errorMessage =
+				err instanceof Error ? err.message : 'Something went wrong while generating Screening ID.';
+		} finally {
+			loading = false;
+			showConfirmation = false;
+			c1 = false;
+			c2 = false;
+		}
 	}
 
 	function handleCancel() {
+		if (loading) return;
 		showConfirmation = false;
 	}
 </script>
@@ -34,7 +94,7 @@
 				<p class="text-sm text-gray-500 mt-2">Confirm inclusion criteria to proceed.</p>
 			</div>
 
-			<div class="p-8 space-y-8">
+			<div class="p-8 space-y-6">
 				<div class="space-y-4">
 					<label
 						class="flex items-start gap-4 p-5 rounded-2xl border cursor-pointer transition-all duration-200 group select-none
@@ -47,6 +107,7 @@
 								type="checkbox"
 								bind:checked={c1}
 								class="w-5 h-5 accent-emerald-600 cursor-pointer"
+								disabled={loading}
 							/>
 						</div>
 						<span
@@ -67,6 +128,7 @@
 								type="checkbox"
 								bind:checked={c2}
 								class="w-5 h-5 accent-emerald-600 cursor-pointer"
+								disabled={loading}
 							/>
 						</div>
 						<span
@@ -80,14 +142,31 @@
 
 				<button
 					class="w-full py-4 rounded-xl text-sm font-bold tracking-wide shadow-lg transition-all duration-300 ease-out
-                    {canGenerate
+                    {canGenerate && !loading
 						? 'bg-emerald-700 text-white shadow-emerald-900/20 hover:bg-emerald-800 hover:shadow-emerald-900/30 hover:-translate-y-0.5'
 						: 'bg-gray-100 text-gray-400 shadow-none cursor-not-allowed'}"
-					disabled={!canGenerate}
+					disabled={!canGenerate || loading}
 					onclick={handleInitialClick}
 				>
-					GENERATE SCREENING ID
+					{#if loading}
+						<span class="inline-flex items-center justify-center gap-2">
+							<span
+								class="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
+							/>
+							Generating...
+						</span>
+					{:else}
+						GENERATE SCREENING ID
+					{/if}
 				</button>
+
+				{#if errorMessage}
+					<p class="text-sm text-red-600 text-center">{errorMessage}</p>
+				{/if}
+
+				{#if successMessage}
+					<p class="text-sm text-emerald-700 text-center font-medium">{successMessage}</p>
+				{/if}
 			</div>
 		</div>
 
@@ -141,12 +220,14 @@
 						<button
 							class="flex-1 py-2.5 px-4 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all"
 							onclick={handleCancel}
+							disabled={loading}
 						>
 							Cancel
 						</button>
 						<button
-							class="flex-1 py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-900/20 transition-all"
+							class="flex-1 py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-900/20 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
 							onclick={handleConfirmGenerate}
+							disabled={loading}
 						>
 							Yes, Generate
 						</button>
