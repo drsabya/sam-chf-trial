@@ -1,16 +1,24 @@
 // src/lib/server/visitsVision.ts
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GEMINI_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { supabase } from '$lib/supabaseClient';
 
-if (!GEMINI_API_KEY) {
-	throw new Error('GEMINI_API_KEY is not set');
+/**
+ * Get a Gemini model dynamically.
+ * This prevents Netlify from inlining secrets in the build output.
+ */
+function getModel() {
+	const apiKey = env.GEMINI_API_KEY;
+
+	if (!apiKey) {
+		throw new Error('GEMINI_API_KEY is not set');
+	}
+
+	const genAI = new GoogleGenerativeAI(apiKey);
+
+	// You can change the model later if needed
+	return genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 }
-
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-
-// You can change the model later if needed
-const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
 type VisitLabPatch = Record<string, number | null>;
 
@@ -46,6 +54,9 @@ export async function runVisionJsonExtraction(options: {
 
 	const base64Data = Buffer.from(buffer).toString('base64');
 
+	// Get model dynamically (runtime, not at build)
+	const model = getModel();
+
 	const result = await model.generateContent({
 		contents: [
 			{
@@ -67,7 +78,7 @@ export async function runVisionJsonExtraction(options: {
 
 	const text = result.response.text().trim();
 
-	// Try to extract the JSON object from the response safely
+	// Extract the JSON object from the response safely
 	const start = text.indexOf('{');
 	const end = text.lastIndexOf('}');
 
