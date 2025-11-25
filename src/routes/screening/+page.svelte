@@ -45,10 +45,14 @@
 			}
 
 			// 2️⃣ Create Visit 1 for this participant
-			const visitRes = await fetch('/apis/visits/visit1/create', {
+			// 2️⃣ Create Visit 1 using the new unified API
+			const visitRes = await fetch('/apis/visits/create', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ participantId: participant.id })
+				body: JSON.stringify({
+					participantId: participant.id,
+					visitNumber: 1
+				})
 			});
 
 			if (!visitRes.ok) {

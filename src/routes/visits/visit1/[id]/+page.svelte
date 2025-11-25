@@ -1,10 +1,10 @@
+<!-- src/routes/visits/visit1/[id]/+page.svelte -->
 <script lang="ts">
 	/* --------------------------------------------
        Imports
     --------------------------------------------- */
 	import type { PageProps } from './$types';
 	import {
-		Phone,
 		Calendar,
 		FileText,
 		CloudUpload,
@@ -16,10 +16,12 @@
 		Loader2,
 		ExternalLink,
 		AlertCircle,
-		Loader
+		Loader,
+		AlertOctagon
 	} from '@lucide/svelte';
 	import jsPDF from 'jspdf';
 	import { fly } from 'svelte/transition';
+	import VisitHeader from '$lib/components/visits/VisitHeader.svelte';
 
 	let { data }: PageProps = $props();
 	let visit = $state(data.visit);
@@ -27,6 +29,7 @@
 	let opdOptions = $state<string[]>(data.opdOptions ?? []);
 
 	let scheduledOn = $state<string>(visit.scheduled_on ?? '');
+	let visitDate = $state<string>(visit.visit_date ?? '');
 
 	// Track loading state
 	let uploading = $state({
@@ -35,6 +38,33 @@
 		efficacy: false,
 		safety: false
 	});
+
+	// --- New visit conclusion state ---
+	type VoucherStatus = '' | 'given' | 'not_given';
+	type ScreeningOutcome = '' | 'failure' | 'success';
+
+	let voucherStatus = $state<VoucherStatus>('');
+	let screeningOutcome = $state<ScreeningOutcome>('');
+
+	const concludeButtonColorClass = $derived(
+		screeningOutcome === 'failure'
+			? 'bg-rose-600 hover:bg-rose-700 focus:ring-rose-500'
+			: screeningOutcome === 'success'
+				? 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500'
+				: 'bg-slate-900 hover:bg-slate-950 focus:ring-slate-500'
+	);
+
+	const hasRandomizationId = $derived(Boolean(participant.randomization_id));
+
+	const concludeLabel = $derived(
+		hasRandomizationId
+			? 'Save'
+			: screeningOutcome === 'failure'
+				? 'Declaring screening failure'
+				: screeningOutcome === 'success'
+					? 'Randomize'
+					: 'Conclude visit'
+	);
 
 	/* --------------------------------------------
        Helpers
@@ -50,15 +80,6 @@
 			year: 'numeric'
 		});
 	}
-
-	const fullName = $derived(
-		[participant.first_name, participant.middle_name, participant.last_name]
-			.map((x) => x?.trim())
-			.filter(Boolean)
-			.join(' ')
-	);
-
-	const initials = $derived(participant.initials?.trim() ?? 'P');
 
 	/* --------------------------------------------
        PDF & File Logic
@@ -174,6 +195,17 @@
 	let efficacyFiles: File[] = $state([]);
 	let safetyFiles: File[] = $state([]);
 
+	type ExtractionDialog = {
+		title: string;
+		fields: { label: string; value: string | number | null }[];
+	};
+
+	let extractionDialog: ExtractionDialog | null = $state(null);
+
+	function closeExtractionDialog() {
+		extractionDialog = null;
+	}
+
 	function handleChange(setter: (f: File[]) => void, evt: Event) {
 		const target = evt.target as HTMLInputElement;
 		if (target.files) setter(Array.from(target.files));
@@ -214,6 +246,15 @@
 						console.warn('Echo extraction failed:', out.error);
 					} else {
 						console.log('Echo extraction success:', out.updated);
+						extractionDialog = {
+							title: 'Echo values extracted',
+							fields: [
+								{
+									label: 'LVEF (%)',
+									value: out.updated?.echo_lvef ?? null
+								}
+							]
+						};
 					}
 				} catch (err) {
 					console.error('Echo vision endpoint error:', err);
@@ -238,6 +279,23 @@
 						console.warn('Efficacy extraction failed:', out.error);
 					} else {
 						console.log('Efficacy extraction success:', out.updated);
+						extractionDialog = {
+							title: 'Efficacy labs extracted',
+							fields: [
+								{
+									label: 'NT-proBNP',
+									value: out.updated?.nt_pro_bnp ?? null
+								},
+								{
+									label: 'TSH',
+									value: out.updated?.serum_tsh ?? null
+								},
+								{
+									label: 'Homocysteine',
+									value: out.updated?.serum_homocysteine ?? null
+								}
+							]
+						};
 					}
 				} catch (err) {
 					console.error('Efficacy vision endpoint error:', err);
@@ -262,6 +320,29 @@
 						console.warn('Safety extraction failed:', out.error);
 					} else {
 						console.log('Safety extraction success:', out.updated);
+						extractionDialog = {
+							title: 'Safety labs extracted',
+							fields: [
+								{ label: 'Hb', value: out.updated?.hb ?? null },
+								{ label: 'RBCs', value: out.updated?.rbcs ?? null },
+								{ label: 'WBCs', value: out.updated?.wbcs ?? null },
+								{ label: 'Polymorphs (%)', value: out.updated?.polymorphs ?? null },
+								{ label: 'Lymphocytes (%)', value: out.updated?.lymphocytes ?? null },
+								{ label: 'Monocytes (%)', value: out.updated?.monocytes ?? null },
+								{ label: 'Platelets', value: out.updated?.platelets ?? null },
+								{ label: 'SGOT / AST', value: out.updated?.sgot_ast ?? null },
+								{ label: 'SGPT / ALT', value: out.updated?.sgpt_alt ?? null },
+								{ label: 'Total bilirubin', value: out.updated?.bilirubin_total ?? null },
+								{ label: 'Direct bilirubin', value: out.updated?.bilirubin_direct ?? null },
+								{ label: 'Indirect bilirubin', value: out.updated?.bilirubin_indirect ?? null },
+								{ label: 'BUN', value: out.updated?.bun ?? null },
+								{ label: 'Serum creatinine', value: out.updated?.serum_creatinine ?? null },
+								{ label: 'Total cholesterol', value: out.updated?.total_cholesterol ?? null },
+								{ label: 'HDL', value: out.updated?.hdl ?? null },
+								{ label: 'LDL', value: out.updated?.ldl ?? null },
+								{ label: 'Triglycerides', value: out.updated?.triglycerides ?? null }
+							]
+						};
 					}
 				} catch (err) {
 					console.error('Safety vision endpoint error:', err);
@@ -304,52 +385,7 @@
 	></div>
 
 	<div class="max-w-2xl mx-auto pt-10 px-6">
-		<div
-			in:fly={{ y: 20, duration: 600 }}
-			class="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/60 border border-slate-100 mb-8"
-		>
-			<div class="flex flex-col">
-				<div
-					class="flex items-center gap-2 sm:gap-3 text-sm font-medium text-slate-500 uppercase tracking-widest mt-1 mb-2"
-				>
-					<span class="text-slate-900 font-bold">{initials}</span>
-					<span class="text-slate-300">•</span>
-					{#if participant.screening_id}
-						<span>{participant.screening_id}</span>
-						<span class="text-slate-300">•</span>
-					{/if}
-					<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold"
-						>V{visit.visit_number ?? 1}</span
-					>
-				</div>
-
-				<h1 class="text-3xl font-bold text-slate-900 tracking-tight mt-1">
-					{fullName}
-				</h1>
-
-				{#if participant.phone}
-					<div class="mt-2 flex items-center gap-2">
-						<a
-							href="tel:{participant.phone}"
-							class="flex items-center gap-2 text-emerald-700 font-semibold hover:underline decoration-emerald-300/50 underline-offset-4 transition-all"
-						>
-							<Phone class="w-4 h-4" />
-							{participant.phone}
-						</a>
-					</div>
-				{/if}
-
-				<div class="mt-6 pt-5 border-t border-slate-100 flex items-center gap-2">
-					<div class="bg-rose-50 text-rose-600 p-1.5 rounded-md">
-						<AlertCircle class="w-4 h-4" />
-					</div>
-					<div class="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2">
-						<span class="text-xs font-bold text-slate-500 uppercase tracking-wide">Due Date</span>
-						<span class="text-sm font-bold text-rose-600">{formatDatePretty(visit.due_date)}</span>
-					</div>
-				</div>
-			</div>
-		</div>
+		<VisitHeader {participant} {visit} />
 
 		<div class="space-y-8">
 			<section in:fly={{ y: 20, delay: 100, duration: 600 }}>
@@ -559,6 +595,203 @@
 					{/each}
 				</div>
 			</section>
+
+			<!-- New Visit Conclusion section -->
+			<section in:fly={{ y: 20, delay: 300, duration: 600 }}>
+				<div class="flex items-center gap-2 mb-4 px-2">
+					<CheckCircle2 class="w-4 h-4 text-slate-700" />
+					<h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">
+						Visit Conclusion
+					</h3>
+				</div>
+
+				<form
+					method="POST"
+					action="?/conclude"
+					class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-6"
+				>
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						<!-- Voucher status -->
+						<fieldset class="space-y-3">
+							<legend class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+								Voucher
+							</legend>
+							<div class="flex flex-col gap-2">
+								<label
+									class="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer transition-all
+          {voucherStatus === 'given'
+										? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+										: 'border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40'}"
+								>
+									<input
+										type="radio"
+										name="voucher_status"
+										value="given"
+										bind:group={voucherStatus}
+										class="hidden"
+									/>
+									<span
+										class="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold
+            {voucherStatus === 'given'
+											? 'border-emerald-500 bg-emerald-500 text-white'
+											: 'border-slate-300 text-slate-400'}">✔</span
+									>
+									<span>Voucher given</span>
+								</label>
+
+								<label
+									class="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer transition-all
+          {voucherStatus === 'not_given'
+										? 'border-slate-900 bg-slate-900 text-white'
+										: 'border-slate-200 hover:border-slate-400 hover:bg-slate-50'}"
+								>
+									<input
+										type="radio"
+										name="voucher_status"
+										value="not_given"
+										bind:group={voucherStatus}
+										class="hidden"
+									/>
+									<span
+										class="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold
+            {voucherStatus === 'not_given'
+											? 'border-white bg-white text-slate-900'
+											: 'border-slate-300 text-slate-400'}">✕</span
+									>
+									<span>Voucher not given</span>
+								</label>
+							</div>
+						</fieldset>
+
+						{#if !hasRandomizationId}
+							<!-- Screening outcome -->
+							<fieldset class="space-y-3">
+								<legend class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+									Screening Outcome
+								</legend>
+								<div class="flex flex-col gap-2">
+									<label
+										class="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer transition-all
+            {screeningOutcome === 'failure'
+											? 'border-rose-500 bg-rose-50 text-rose-800'
+											: 'border-slate-200 hover:border-rose-300 hover:bg-rose-50/40'}"
+									>
+										<input
+											type="radio"
+											name="screening_outcome"
+											value="failure"
+											bind:group={screeningOutcome}
+											class="hidden"
+										/>
+										<span
+											class="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold
+              {screeningOutcome === 'failure'
+												? 'border-rose-500 bg-rose-500 text-white'
+												: 'border-slate-300 text-slate-400'}">!</span
+										>
+										<span>Screening failure</span>
+									</label>
+
+									<label
+										class="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer transition-all
+            {screeningOutcome === 'success'
+											? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+											: 'border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40'}"
+									>
+										<input
+											type="radio"
+											name="screening_outcome"
+											value="success"
+											bind:group={screeningOutcome}
+											class="hidden"
+										/>
+										<span
+											class="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold
+              {screeningOutcome === 'success'
+												? 'border-emerald-500 bg-emerald-500 text-white'
+												: 'border-slate-300 text-slate-400'}">✔</span
+										>
+										<span>Screening success</span>
+									</label>
+								</div>
+							</fieldset>
+						{/if}
+					</div>
+
+					<div class="pt-2 border-t border-slate-100 mt-4">
+						<button
+							type="submit"
+							disabled={!voucherStatus || (!hasRandomizationId && !screeningOutcome)}
+							class={'w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-md focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed ' +
+								concludeButtonColorClass}
+						>
+							{#if hasRandomizationId}
+								<CheckCircle2 class="w-4 h-4" />
+							{:else if screeningOutcome === 'failure'}
+								<AlertOctagon class="w-4 h-4" />
+							{:else if screeningOutcome === 'success'}
+								<CheckCircle2 class="w-4 h-4" />
+							{:else}
+								<Clock class="w-4 h-4" />
+							{/if}
+							<span>{concludeLabel}</span>
+						</button>
+					</div>
+				</form>
+			</section>
 		</div>
 	</div>
+
+	{#if extractionDialog}
+		<div
+			class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4"
+			role="dialog"
+			aria-modal="true"
+			onclick={closeExtractionDialog}
+		>
+			<div
+				class="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 p-5 space-y-4"
+				onclick={(e) => e.stopPropagation()}
+			>
+				<div class="flex items-start justify-between gap-3">
+					<div>
+						<h2 class="text-sm font-semibold text-slate-900">
+							{extractionDialog.title}
+						</h2>
+						<p class="text-xs text-slate-500 mt-1">
+							These values were extracted automatically using AI and added to the database.
+						</p>
+					</div>
+					<button
+						type="button"
+						class="text-slate-400 hover:text-slate-600 text-xs"
+						onclick={closeExtractionDialog}
+					>
+						✕
+					</button>
+				</div>
+
+				<div class="max-h-56 overflow-y-auto space-y-1">
+					{#each extractionDialog.fields as field (field.label)}
+						{#if field.value !== null}
+							<div class="flex items-center justify-between text-xs">
+								<span class="text-slate-500">{field.label}</span>
+								<span class="font-semibold text-slate-900">{field.value}</span>
+							</div>
+						{/if}
+					{/each}
+				</div>
+
+				<div class="flex justify-end">
+					<button
+						type="button"
+						class="px-3 py-1.5 text-xs font-medium rounded-full bg-slate-900 text-white hover:bg-slate-800"
+						onclick={closeExtractionDialog}
+					>
+						Close
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>

@@ -1,166 +1,136 @@
 <script lang="ts">
-	import { supabase } from '$lib/supabaseClient';
-	import { fly } from 'svelte/transition';
+	import type { PageData } from './$types';
+	import { fade, fly } from 'svelte/transition';
+	import { Calendar, Plus, BookUser, UsersRound, UserRoundSearch } from '@lucide/svelte';
 
-	let file: File | null = null;
-	let uploading = false;
-	let message = '';
+	let { data }: { data: PageData } = $props();
+	let visits = $state(data.visits ?? []);
 
-	async function handleUpload() {
-		message = '';
+	function formatDatePretty(value: string | null | undefined) {
+		if (!value) return 'TBD';
+		const d = new Date(value);
+		if (Number.isNaN(d.getTime())) return 'TBD';
+		return d.toLocaleDateString('en-IN', {
+			day: '2-digit',
+			month: 'short'
+		});
+	}
 
-		if (!file) {
-			message = 'Please select a file first.';
-			return;
-		}
-
-		uploading = true;
-
-		try {
-			// 1) Request presigned R2 upload URL
-			const presignRes = await fetch('/apis/r2/presign', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					visitId: 'demo-visit',
-					field: 'lab-report',
-					filename: file.name
-				})
-			});
-
-			if (!presignRes.ok) throw new Error('Presign failed');
-
-			const { ok, url, objectKey } = await presignRes.json();
-
-			if (!ok || !url || !objectKey) throw new Error('Invalid presign payload');
-
-			// 2) Upload to R2
-			const uploadRes = await fetch(url, { method: 'PUT', body: file });
-			if (!uploadRes.ok) throw new Error('R2 upload failed');
-
-			// 3) Insert row into supabase
-			const { data: inserted, error } = await supabase
-				.from('lab_reports')
-				.insert({
-					src: objectKey,
-					homocysteine: null,
-					tsh: null,
-					bnp: null
-				})
-				.select()
-				.single();
-
-			if (error) throw new Error(error.message);
-
-			message = 'Analysis started. Processing in background.';
-
-			// 4) Fire-and-forget Gemini processing
-			if (inserted?.id) {
-				fetch('/apis/lab_reports/process', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ id: inserted.id })
-				});
-			}
-
-			// reset file input
-			file = null;
-			const input = document.getElementById('file-input') as HTMLInputElement;
-			if (input) input.value = '';
-		} catch (err: any) {
-			message = `Error: ${err.message}`;
-		} finally {
-			uploading = false;
-		}
+	function formatName(participant: any | null) {
+		if (!participant) return 'Unknown participant';
+		const parts = [participant.first_name, participant.middle_name, participant.last_name]
+			.map((x) => x?.trim())
+			.filter(Boolean);
+		return parts.join(' ') || 'Unknown participant';
 	}
 </script>
 
-<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans text-slate-800">
-	<div class="max-w-lg mx-auto">
-		<div
-			class="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden border border-gray-100"
-		>
-			<div class="px-8 pt-10 pb-6">
-				<h1 class="text-3xl font-light tracking-tight text-emerald-900 mb-2">SAM-CHF</h1>
-				<p class="text-sm text-gray-500 leading-relaxed">
-					Upload patient lab reports for automated extraction of Homocysteine, TSH, and BNP via
-					Gemini AI.
-				</p>
-			</div>
-
-			<div class="px-8 pb-8">
-				<div class="space-y-6">
-					<div class="relative group">
-						<input
-							id="file-input"
-							type="file"
-							accept=".pdf,.jpg,.png"
-							class="block w-full text-sm text-gray-500
-                                file:mr-4 file:py-3 file:px-6
-                                file:rounded-full file:border-0
-                                file:text-sm file:font-medium
-                                file:bg-emerald-50 file:text-emerald-700
-                                hover:file:bg-emerald-100
-                                file:transition file:duration-200
-                                file:cursor-pointer cursor-pointer
-                                focus:outline-none"
-							on:change={(e) => {
-								const target = e.currentTarget as HTMLInputElement;
-								file = target.files?.[0] ?? null;
-								message = '';
-							}}
-						/>
-					</div>
-
-					<button
-						type="button"
-						on:click={handleUpload}
-						disabled={uploading || !file}
-						class="w-full py-3.5 px-4 rounded-xl text-emerald-900 text-sm font-medium border border-emerald-100 bg-emerald-50
-                               transition-all duration-200 ease-in-out
-                               hover:bg-emerald-100 hover:border-emerald-200
-                               disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-					>
-						{uploading ? 'Processing Report...' : 'Upload & Analyze'}
-					</button>
-				</div>
-
-				{#if message}
-					<div
-						in:fly={{ y: 10, duration: 300 }}
-						class="mt-6 p-4 rounded-xl text-sm border flex items-start gap-3
-                        {message.startsWith('Error')
-							? 'bg-red-50 text-red-700 border-red-100'
-							: 'bg-emerald-50 text-emerald-800 border-emerald-100'}"
-					>
-						<span class="text-lg leading-none mt-0.5">
-							{message.startsWith('Error') ? '✕' : '✓'}
-						</span>
-						<p class="font-medium">{message}</p>
-					</div>
-				{/if}
-			</div>
-
-			<div class="bg-gray-50 px-8 py-6 border-t border-gray-100">
-				<div class="grid grid-cols-2 gap-4">
-					<a
-						href="/leads"
-						class="flex items-center justify-center px-4 py-3 rounded-xl bg-white border border-gray-200
-                               text-gray-600 text-sm font-medium transition-all hover:border-emerald-300 hover:text-emerald-700 hover:shadow-sm"
-					>
-						View Leads
-					</a>
-					<a
-						href="/screening"
-						class="flex items-center justify-center px-4 py-3 rounded-xl text-white text-sm font-medium shadow-lg shadow-emerald-600/20
-                               bg-emerald-600 transition-all duration-200 hover:bg-emerald-700 hover:shadow-emerald-600/30 hover:-translate-y-0.5"
-					>
-						+ New screening
-					</a>
-				</div>
-			</div>
+<div class="min-h-screen bg-[#FAFAFA] py-12 px-4 sm:px-6 lg:px-8 font-sans text-slate-800">
+	<div class="max-w-lg mx-auto space-y-10">
+		<div class="px-1 pt-2">
+			<h1 class="text-3xl font-light tracking-tight text-slate-900">SAM-CHF</h1>
+			<p class="text-sm font-medium text-slate-400 mt-1 uppercase tracking-wider">
+				Clinical Dashboard
+			</p>
 		</div>
 
-		<p class="text-center text-xs text-gray-400 mt-8">Secure R2 Storage • Gemini Processing</p>
+		<div class="grid grid-cols-3 gap-4">
+			<a
+				href="/leads"
+				class="group flex flex-col items-center justify-center py-5 px-2 rounded-2xl bg-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-white hover:border-emerald-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300"
+			>
+				<div class="text-slate-400 group-hover:text-emerald-600 transition-colors duration-300">
+					<BookUser class="w-6 h-6" />
+				</div>
+				<span
+					class="text-[11px] mt-3 font-semibold text-slate-500 group-hover:text-emerald-900 tracking-wide"
+					>Leads</span
+				>
+			</a>
+
+			<a
+				href="/participants"
+				class="group flex flex-col items-center justify-center py-5 px-2 rounded-2xl bg-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-white hover:border-emerald-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300"
+			>
+				<div class="text-slate-400 group-hover:text-emerald-600 transition-colors duration-300">
+					<UserRoundSearch class="w-6 h-6" />
+				</div>
+				<span
+					class="text-[11px] mt-3 font-semibold text-slate-500 group-hover:text-emerald-900 tracking-wide"
+					>Participants</span
+				>
+			</a>
+
+			<a
+				href="/screening"
+				class="group flex flex-col items-center justify-center py-5 px-2 rounded-2xl bg-emerald-600 text-white shadow-[0_8px_20px_rgb(5,150,105,0.25)] hover:bg-emerald-700 hover:shadow-[0_12px_25px_rgb(5,150,105,0.35)] hover:-translate-y-1 transition-all duration-300"
+			>
+				<Plus class="w-6 h-6 text-emerald-50" />
+				<span class="text-[11px] mt-3 font-semibold tracking-wide text-white">Screening</span>
+			</a>
+		</div>
+
+		<div class="space-y-5">
+			<div class="flex items-center justify-between px-1">
+				<h2 class="text-sm font-semibold text-slate-900">Upcoming Visits</h2>
+				<span class="text-xs font-medium text-slate-400">{visits.length} scheduled</span>
+			</div>
+
+			{#if visits.length === 0}
+				<div
+					in:fly={{ y: 5 }}
+					class="py-12 text-center bg-white rounded-2xl border border-dashed border-slate-200"
+				>
+					<p class="text-sm text-slate-400">No upcoming visits found.</p>
+				</div>
+			{:else}
+				<div class="space-y-4">
+					{#each visits as visit (visit.id)}
+						<a
+							href={`/visits/visit1/${visit.id}`}
+							class="group relative block bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-50
+                                   hover:shadow-[0_12px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300"
+						>
+							<div class="flex items-start justify-between">
+								<div>
+									<h3
+										class="text-[16px] font-semibold text-slate-800 group-hover:text-emerald-900 transition-colors"
+									>
+										{formatName(visit.participant)}
+									</h3>
+
+									<div class="flex items-center gap-3 mt-1.5">
+										<span class="text-xs font-medium text-slate-500">
+											Visit {visit.visit_number}
+										</span>
+										{#if visit.participant?.screening_id}
+											<span class="text-slate-300 text-[10px]">•</span>
+											<span class="font-mono text-xs text-slate-400 tracking-tight">
+												{visit.participant.screening_id}
+											</span>
+										{/if}
+									</div>
+								</div>
+
+								<div class="flex flex-col items-end">
+									<div
+										class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 transition-colors group-hover:bg-rose-100/80"
+									>
+										<div class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></div>
+										<span class="text-xs font-bold tracking-wide"
+											>{formatDatePretty(visit.due_date)}</span
+										>
+									</div>
+									<span
+										class="text-[10px] font-medium text-slate-300 mt-1 uppercase tracking-wider mr-1"
+										>Due Date</span
+									>
+								</div>
+							</div>
+						</a>
+					{/each}
+				</div>
+			{/if}
+		</div>
 	</div>
 </div>

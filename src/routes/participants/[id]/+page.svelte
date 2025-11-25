@@ -270,6 +270,14 @@
 						{message}
 					</p>
 				{/if}
+				<div class="pt-4 text-center">
+					<a
+						href={`/participants/${participant.id}/create-visit`}
+						class="text-sm text-slate-500 hover:text-slate-700 underline underline-offset-2"
+					>
+						Add a new visit →
+					</a>
+				</div>
 			</form>
 		{/if}
 
