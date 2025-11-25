@@ -7,14 +7,16 @@
 		Phone,
 		Calendar,
 		FileText,
-		UploadCloud,
+		CloudUpload,
 		Printer,
 		RefreshCcw,
 		CheckCircle2,
 		Clock,
 		ChevronDown,
 		Loader2,
-		ExternalLink
+		ExternalLink,
+		AlertCircle,
+		Loader
 	} from '@lucide/svelte';
 	import jsPDF from 'jspdf';
 	import { fly } from 'svelte/transition';
@@ -26,7 +28,7 @@
 
 	let scheduledOn = $state<string>(visit.scheduled_on ?? '');
 
-	// Track loading state for each specific upload field
+	// Track loading state
 	let uploading = $state({
 		ecg: false,
 		echo: false,
@@ -154,7 +156,6 @@
 			const saved = await saveRes.json();
 			if (!saved.ok) throw new Error('Failed saving key to DB');
 
-			// update UI state
 			if (field === 'ecg') visit.ecg_src = objectKey;
 			if (field === 'echo') visit.echo_src = objectKey;
 			if (field === 'efficacy') visit.efficacy_src = objectKey;
@@ -180,8 +181,6 @@
 
 	async function uploadField(field: 'ecg' | 'echo' | 'efficacy' | 'safety', files: File[]) {
 		if (!files.length) return;
-
-		// Start Loading
 		uploading[field] = true;
 
 		try {
@@ -197,9 +196,82 @@
 				finalFile = await convertFilesToSinglePdf(files, labelText);
 			}
 
+			// --- Extract Echo LVEF BEFORE uploading ---
+			if (field === 'echo') {
+				const fd = new FormData();
+				fd.append('visitId', visit.id);
+				fd.append('field', 'echo');
+				fd.append('file', finalFile);
+
+				try {
+					const res = await fetch('/apis/visits/visit1/vision/echo', {
+						method: 'POST',
+						body: fd
+					});
+					const out = await res.json();
+
+					if (!out.ok) {
+						console.warn('Echo extraction failed:', out.error);
+					} else {
+						console.log('Echo extraction success:', out.updated);
+					}
+				} catch (err) {
+					console.error('Echo vision endpoint error:', err);
+				}
+			}
+
+			// --- Extract Efficacy labs (BNP/TSH/Hcy) BEFORE uploading ---
+			if (field === 'efficacy') {
+				const fd = new FormData();
+				fd.append('visitId', visit.id);
+				fd.append('field', 'efficacy');
+				fd.append('file', finalFile);
+
+				try {
+					const res = await fetch('/apis/visits/visit1/vision/efficacy', {
+						method: 'POST',
+						body: fd
+					});
+					const out = await res.json();
+
+					if (!out.ok) {
+						console.warn('Efficacy extraction failed:', out.error);
+					} else {
+						console.log('Efficacy extraction success:', out.updated);
+					}
+				} catch (err) {
+					console.error('Efficacy vision endpoint error:', err);
+				}
+			}
+
+			// --- Extract Safety labs BEFORE uploading ---
+			if (field === 'safety') {
+				const fd = new FormData();
+				fd.append('visitId', visit.id);
+				fd.append('field', 'safety');
+				fd.append('file', finalFile);
+
+				try {
+					const res = await fetch('/apis/visits/visit1/vision/safety', {
+						method: 'POST',
+						body: fd
+					});
+					const out = await res.json();
+
+					if (!out.ok) {
+						console.warn('Safety extraction failed:', out.error);
+					} else {
+						console.log('Safety extraction success:', out.updated);
+					}
+				} catch (err) {
+					console.error('Safety vision endpoint error:', err);
+				}
+			}
+
+			// --- Upload final PDF to R2 (existing flow) ---
 			await uploadToR2(field, finalFile);
 
-			// clear local selection
+			// Clear local file selections
 			if (field === 'ecg') ecgFiles = [];
 			if (field === 'echo') echoFiles = [];
 			if (field === 'efficacy') efficacyFiles = [];
@@ -207,7 +279,6 @@
 		} catch (e) {
 			console.error(e);
 		} finally {
-			// Stop Loading
 			uploading[field] = false;
 		}
 	}
@@ -235,11 +306,11 @@
 	<div class="max-w-2xl mx-auto pt-10 px-6">
 		<div
 			in:fly={{ y: 20, duration: 600 }}
-			class="relative bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/60 border border-slate-100 mb-8"
+			class="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/60 border border-slate-100 mb-8"
 		>
-			<div class="flex flex-col gap-1">
+			<div class="flex flex-col">
 				<div
-					class="flex items-center gap-3 text-sm font-medium text-slate-500 uppercase tracking-widest"
+					class="flex items-center gap-2 sm:gap-3 text-sm font-medium text-slate-500 uppercase tracking-widest mt-1 mb-2"
 				>
 					<span class="text-slate-900 font-bold">{initials}</span>
 					<span class="text-slate-300">•</span>
@@ -267,16 +338,16 @@
 						</a>
 					</div>
 				{/if}
-			</div>
 
-			<div class="absolute top-8 right-8 hidden sm:flex flex-col items-end">
-				<div
-					class="flex items-center gap-2 text-rose-600 bg-rose-50 px-3 py-1.5 rounded-full border border-rose-100"
-				>
-					<Clock class="w-3.5 h-3.5" />
-					<span class="text-xs font-bold">{formatDatePretty(visit.due_date)}</span>
+				<div class="mt-6 pt-5 border-t border-slate-100 flex items-center gap-2">
+					<div class="bg-rose-50 text-rose-600 p-1.5 rounded-md">
+						<AlertCircle class="w-4 h-4" />
+					</div>
+					<div class="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2">
+						<span class="text-xs font-bold text-slate-500 uppercase tracking-wide">Due Date</span>
+						<span class="text-sm font-bold text-rose-600">{formatDatePretty(visit.due_date)}</span>
+					</div>
 				</div>
-				<span class="text-[10px] text-rose-400 font-medium mt-1 pr-1">Target Date</span>
 			</div>
 		</div>
 
@@ -362,8 +433,8 @@
 								<div
 									class="bg-slate-50 rounded-xl p-6 border border-slate-100 flex flex-col items-center justify-center gap-3"
 								>
-									<Loader2 class="w-6 h-6 text-emerald-600 animate-spin" />
-									<span class="text-xs text-slate-500 font-medium">Converting & Uploading...</span>
+									<Loader class="w-6 h-6 text-emerald-600 animate-spin" />
+									<span class="text-xs text-slate-500 font-medium">Analyzing and uploading...</span>
 								</div>
 							{:else if publicUrl && item.files.length === 0}
 								<div
@@ -390,7 +461,6 @@
 											<span class="text-xs text-slate-400 truncate">PDF • Click to open</span>
 										</div>
 									</a>
-
 									<div class="flex items-center gap-1 pl-3 border-l border-slate-200 ml-3">
 										<button
 											onclick={(e) => printUrl(e, publicUrl)}
@@ -408,7 +478,6 @@
 										</button>
 									</div>
 								</div>
-
 								<input
 									id={`${item.field}-input`}
 									type="file"
@@ -444,19 +513,16 @@
 												if (item.field === 'efficacy') efficacyFiles = [];
 												if (item.field === 'safety') safetyFiles = [];
 											}}
-											class="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+											class="p-2 text-slate-400 hover:text-rose-500 transition-colors">✕</button
 										>
-											✕
-										</button>
 									</div>
-
 									<button
 										type="button"
 										class="w-full bg-emerald-600 text-white font-semibold text-sm py-3 rounded-xl shadow-lg shadow-emerald-200 hover:bg-emerald-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
 										onclick={() => uploadField(item.field, item.files)}
 									>
-										<UploadCloud class="w-4 h-4" />
-										Upload Document
+										<CloudUpload class="w-4 h-4" />
+										Upload &amp; Analyze
 									</button>
 								</div>
 							{:else}
@@ -466,7 +532,7 @@
 									<div
 										class="p-2 bg-slate-50 rounded-full group-hover/label:bg-emerald-100 transition-colors"
 									>
-										<UploadCloud
+										<CloudUpload
 											class="w-5 h-5 text-slate-400 group-hover/label:text-emerald-600"
 										/>
 									</div>
