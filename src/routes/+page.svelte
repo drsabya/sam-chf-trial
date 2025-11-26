@@ -87,9 +87,9 @@
 				<div class="space-y-4">
 					{#each visits as visit (visit.id)}
 						<a
-							href={`/visits/visit1/${visit.id}`}
+							href={`/visits/visit${visit.visit_number}/${visit.id}`}
 							class="group relative block bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-50
-                                   hover:shadow-[0_12px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300"
+		       hover:shadow-[0_12px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300"
 						>
 							<div class="flex items-start justify-between">
 								<div>

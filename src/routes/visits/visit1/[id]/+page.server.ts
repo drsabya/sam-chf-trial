@@ -190,7 +190,7 @@ export const actions: Actions = {
 	/* ---------------------------------------------
        CONCLUDE VISIT (voucher + failure/randomize)
     --------------------------------------------- */
-	conclude: async ({ request, params }) => {
+	conclude: async ({ request, params, fetch }) => {
 		const id = params.id;
 		if (!id) throw error(400, 'Visit ID is required');
 
@@ -335,6 +335,7 @@ export const actions: Actions = {
 				throw error(500, 'Randomization failed');
 			}
 
+			// 1) Update Visit 1 (set visit_date, voucher_given)
 			const { error: vUpdateErr } = await supabase
 				.from('visits')
 				.update(visitUpdatePayload)
@@ -343,6 +344,35 @@ export const actions: Actions = {
 			if (vUpdateErr) {
 				console.error('Error updating visit after randomization:', vUpdateErr);
 				throw error(500, 'Could not update visit after randomization');
+			}
+
+			// 2) Auto-create Visit 2 using the existing API
+			//    This will:
+			//    - read Visit 1's visit_date (just set above)
+			//    - compute scheduled_on and due_date as per protocol
+			try {
+				const res = await fetch('/apis/visits/create', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						participantId,
+						visitNumber: 2
+					})
+				});
+
+				if (!res.ok) {
+					let errBody: any = null;
+					try {
+						errBody = await res.json();
+					} catch {
+						// ignore JSON parse errors
+					}
+					console.error('Error auto-creating Visit 2:', res.status, errBody);
+					// We do NOT throw here, so randomization still succeeds
+				}
+			} catch (e) {
+				console.error('Network error while auto-creating Visit 2:', e);
+				// Also do not throw, to avoid breaking the main flow
 			}
 
 			return { success: true, randomization_id: nextId };
