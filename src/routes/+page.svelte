@@ -30,7 +30,7 @@
 		<div class="px-1 pt-2">
 			<h1 class="text-3xl font-light tracking-tight text-slate-900">SAM-CHF</h1>
 			<p class="text-sm font-medium text-slate-400 mt-1 uppercase tracking-wider">
-				Clinical Dashboard
+				Trial Dashboard
 			</p>
 		</div>
 

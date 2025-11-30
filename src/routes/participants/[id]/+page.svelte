@@ -1,7 +1,7 @@
 <!-- src/routes/participants/[id]/+page.svelte -->
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
-	import { Phone } from '@lucide/svelte';
+	import { ChevronRight, Phone } from '@lucide/svelte';
 
 	let { data, form }: { data: PageData; form: ActionData | null } = $props();
 
@@ -295,25 +295,33 @@
 				{:else}
 					<div class="space-y-3 text-sm">
 						{#each visits as visit}
-							<div
-								class="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-2.5 border border-slate-100"
+							<a
+								href={`/visits/visit${visit.visit_number ?? visit.visitNumber}/${visit.id}`}
+								class="block"
 							>
-								<div>
-									<p class="font-medium text-slate-800">
-										Visit {visit.visit_number ?? visit.visitNumber}
-									</p>
-									<p class="text-xs text-slate-500 mt-0.5">
-										Start: {visit.start_date ?? visit.startDate ?? '—'}
-									</p>
-								</div>
-
-								<a
-									href={`/visits/visit${visit.visit_number ?? visit.visitNumber}/${visit.id}`}
-									class="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+								<div
+									class="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-2.5
+                   border border-slate-100 hover:bg-slate-100 transition"
 								>
-									Open
-								</a>
-							</div>
+									<div>
+										<p class="font-medium text-slate-800 mb-2">
+											Visit {visit.visit_number ?? visit.visitNumber}
+										</p>
+
+										{#if visit.visit_date}
+											<span class="inline-block text-xs text-emerald-700">
+												Completed: {visit.visit_date}
+											</span>
+										{:else}
+											<span class="inline-block text-xs text-amber-600">
+												Due: {visit.due_date}
+											</span>
+										{/if}
+									</div>
+
+									<ChevronRight size={14} class="text-slate-500" />
+								</div>
+							</a>
 						{/each}
 					</div>
 				{/if}

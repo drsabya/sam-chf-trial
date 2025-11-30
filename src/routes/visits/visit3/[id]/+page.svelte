@@ -1,4 +1,4 @@
-<!-- src/routes/visits/visit2/[id]/+page.svelte -->
+<!-- src/routes/visits/visit3/[id]/+page.svelte -->
 <script lang="ts">
 	import type { PageProps } from './$types';
 	import {
@@ -73,7 +73,7 @@
 	}
 
 	/* --------------------------------------------
-	   PDF & File Logic (same pattern as Visit 1)
+	   PDF & File Logic
 	--------------------------------------------- */
 	function fileToDataURL(file: File): Promise<string> {
 		return new Promise((resolve, reject) => {
@@ -142,7 +142,7 @@
 	}
 
 	/* --------------------------------------------
-	   R2 Upload (generic endpoint re-used)
+	   R2 Upload
 	--------------------------------------------- */
 	async function uploadToR2(field: 'efficacy', file: File) {
 		try {
@@ -176,7 +176,7 @@
 	}
 
 	/* --------------------------------------------
-	   Visit 2 Efficacy Upload & Extraction
+	   Visit 3 Efficacy Upload & Extraction
 	--------------------------------------------- */
 	let efficacyFiles: File[] = $state([]);
 
@@ -192,19 +192,19 @@
 			} else {
 				const init = participant.initials?.trim() ?? '';
 				const scrId = participant.screening_id ?? '';
-				const vNum = 'V2';
+				const vNum = 'V3';
 				const labelText = [init, scrId, vNum].filter(Boolean).join(' ');
 				finalFile = await convertFilesToSinglePdf(files, labelText);
 			}
 
-			// 1) Gemini extraction for Visit 2 markers
+			// 1) Gemini extraction for Visit 3 markers (same as Visit 2 + homocysteine)
 			const fd = new FormData();
 			fd.append('visitId', visit.id);
 			fd.append('field', 'efficacy');
 			fd.append('file', finalFile);
 
 			try {
-				const res = await fetch('/apis/visits/visit2/vision/efficacy', {
+				const res = await fetch('/apis/visits/visit3/vision/efficacy', {
 					method: 'POST',
 					body: fd
 				});
@@ -212,11 +212,11 @@
 				const out = await res.json();
 
 				if (!out.ok) {
-					console.warn('Visit 2 efficacy extraction failed:', out.error);
+					console.warn('Visit 3 efficacy extraction failed:', out.error);
 				} else {
-					console.log('Visit 2 efficacy extraction success:', out.updated);
+					console.log('Visit 3 efficacy extraction success:', out.updated);
 					extractionDialog = {
-						title: 'Visit 2 efficacy markers extracted',
+						title: 'Visit 3 efficacy markers extracted',
 						fields: [
 							{ label: 'GSH', value: out.updated?.gsh ?? null },
 							{ label: 'TNF-α', value: out.updated?.tnf_alpha ?? null },
@@ -226,6 +226,10 @@
 							{
 								label: '5-methylcytosine (5mC)',
 								value: out.updated?.five_methylcytosine ?? null
+							},
+							{
+								label: 'Serum homocysteine',
+								value: out.updated?.serum_homocysteine ?? null
 							}
 						]
 					};
@@ -238,7 +242,7 @@
 					}
 				}
 			} catch (err) {
-				console.error('Visit 2 efficacy vision endpoint error:', err);
+				console.error('Visit 3 efficacy vision endpoint error:', err);
 			}
 
 			// 2) Upload to R2 and save efficacy_src
@@ -265,12 +269,12 @@
 		<VisitHeader {participant} {visit} />
 
 		<div class="space-y-8">
-			<!-- OPD Scheduling (Visit 2) -->
+			<!-- OPD Scheduling (Visit 3) -->
 			<section in:fly={{ y: 20, delay: 100, duration: 600 }}>
 				<div class="flex items-center gap-2 mb-3 px-2">
 					<Calendar class="w-4 h-4 text-amber-600" />
 					<h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">
-						OPD Scheduling (Visit 2)
+						OPD Scheduling (Visit 3)
 					</h3>
 				</div>
 
@@ -309,12 +313,12 @@
 				</div>
 			</section>
 
-			<!-- Efficacy upload & extracted values (Visit 2 markers) -->
+			<!-- Efficacy upload & extracted values (Visit 3 markers) -->
 			<section in:fly={{ y: 20, delay: 180, duration: 600 }}>
 				<div class="flex items-center gap-2 mb-3 px-2">
 					<FileText class="w-4 h-4 text-emerald-600" />
 					<h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">
-						Visit 2 – Efficacy Markers
+						Visit 3 – Efficacy Markers
 					</h3>
 				</div>
 
@@ -323,7 +327,7 @@
 				>
 					<div class="flex items-center justify-between mb-3 relative z-10">
 						<h4 class="text-sm font-semibold text-slate-700">
-							Efficacy report (GSH, TNF-α, IL-6, SAME, SAH, 5mC)
+							Efficacy report (GSH, TNF-α, IL-6, SAME, SAH, 5mC, Homocysteine)
 						</h4>
 
 						{#if uploading.efficacy}
@@ -470,8 +474,8 @@
 					{/if}
 				</div>
 
-				<!-- Stored values (if already present in DB) -->
-				{#if visit.gsh != null || visit.tnf_alpha != null || visit.il6 != null || visit.same != null || visit.sah != null || visit.five_methylcytosine != null}
+				<!-- Stored values -->
+				{#if visit.gsh != null || visit.tnf_alpha != null || visit.il6 != null || visit.same != null || visit.sah != null || visit.five_methylcytosine != null || visit.serum_homocysteine != null}
 					<div class="mt-4 bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
 						<p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
 							Stored values
@@ -513,12 +517,18 @@
 									<span class="font-semibold">{visit.five_methylcytosine}</span>
 								</div>
 							{/if}
+							{#if visit.serum_homocysteine != null}
+								<div class="flex justify-between">
+									<span>Serum homocysteine</span>
+									<span class="font-semibold">{visit.serum_homocysteine}</span>
+								</div>
+							{/if}
 						</div>
 					</div>
 				{/if}
 			</section>
 
-			<!-- VISIT CONCLUSION FOR VISIT 2 -->
+			<!-- VISIT CONCLUSION FOR VISIT 3 -->
 			<section in:fly={{ y: 20, delay: 260, duration: 600 }}>
 				{#if visit.visit_date}
 					<div
@@ -529,7 +539,7 @@
 						</div>
 						<div class="flex flex-col">
 							<span class="text-xs font-bold text-slate-500 uppercase tracking-wide">
-								Visit 2 status
+								Visit 3 status
 							</span>
 							<span class="text-sm font-semibold text-emerald-800">
 								Completed on {formatDatePretty(visit.visit_date)}
@@ -549,8 +559,8 @@
 							</h3>
 						</div>
 						<p class="text-xs text-slate-500">
-							Clicking the button will mark Visit 2 as completed (using today’s date) and
-							automatically create Visit 3 with the appropriate schedule window based on the
+							Clicking the button will mark Visit 3 as completed (using today’s date) and
+							automatically create Visit 4 with the appropriate schedule window based on the
 							protocol.
 						</p>
 						<button
@@ -558,7 +568,7 @@
 							class="mt-2 w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-950 shadow-md focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-slate-500 active:scale-[0.98] transition-all"
 						>
 							<CheckCircle2 class="w-4 h-4" />
-							<span>Mark Visit 2 completed &amp; create Visit 3</span>
+							<span>Mark Visit 3 completed &amp; create Visit 4</span>
 						</button>
 					</form>
 				{/if}
@@ -609,7 +619,7 @@
 				<div class="flex justify-end">
 					<button
 						type="button"
-						class="px-3 py-1.5 text-xs font-medium rounded-full bg-slate-900 text-white hover:bg-slate-800"
+						class="px-3 py-1.5 text-xs font-medium rounded-full bg-slate-900 text-white hover:bg-ску"
 						onclick={closeExtractionDialog}
 					>
 						Close
