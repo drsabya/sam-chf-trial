@@ -53,7 +53,7 @@
 		/>
 	</div>
 
-	<div class="bg-white rounded-2xl shadow-sm border border-slate-100">
+	<div class="">
 		{#if filteredParticipants().length === 0}
 			<p class="px-4 py-6 text-sm text-slate-500 text-center">
 				No participants found matching **{search}**.
@@ -63,7 +63,7 @@
 				{#each filteredParticipants() as p, i}
 					<li>
 						<a
-							href={`/participants/${p.id}`}
+							href={`/participants/${p.id}/visits`}
 							class="flex items-center justify-between px-4 py-4 text-sm hover:bg-slate-50"
 						>
 							<div class="flex flex-col">
@@ -73,7 +73,7 @@
 							</div>
 
 							<span
-								class="inline-flex items-center justify-center rounded-full bg-emerald-300/90 text-emerald-900 text-xs font-semibold px-3 py-1"
+								class="font-light"
 							>
 								{screeningBadge(p.screening_id)}
 							</span>

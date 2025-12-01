@@ -1,8 +1,8 @@
 <script lang="ts">
     import type { PageData } from './$types';
     import { fade, fly } from 'svelte/transition';
-    // Added SquareKanban to imports
-    import { Calendar, Plus, BookUser, UsersRound, UserRoundSearch, SquareKanban } from '@lucide/svelte';
+    // Added Table to imports
+    import { Calendar, Plus, BookUser, UsersRound, Search, Table, Phone } from '@lucide/svelte';
 
     let { data }: { data: PageData } = $props();
     let visits = $state(data.visits ?? []);
@@ -54,7 +54,7 @@
                 class="group flex flex-col items-center justify-center py-5 px-2 rounded-2xl bg-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-white hover:border-emerald-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300"
             >
                 <div class="text-slate-400 group-hover:text-emerald-600 transition-colors duration-300">
-                    <UserRoundSearch class="w-6 h-6" />
+                    <Search class="w-6 h-6" />
                 </div>
                 <span
                     class="text-[11px] mt-3 font-semibold text-slate-500 group-hover:text-emerald-900 tracking-wide"
@@ -67,7 +67,7 @@
                 class="group flex flex-col items-center justify-center py-5 px-2 rounded-2xl bg-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-white hover:border-emerald-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300"
             >
                 <div class="text-slate-400 group-hover:text-emerald-600 transition-colors duration-300">
-                    <SquareKanban class="w-6 h-6" />
+                    <Table class="w-6 h-6" />
                 </div>
                 <span
                     class="text-[11px] mt-3 font-semibold text-slate-500 group-hover:text-emerald-900 tracking-wide"
@@ -101,47 +101,57 @@
                 <div class="space-y-4">
                     {#each visits as visit (visit.id)}
                         <a
-                            href={`/visits/visit${visit.visit_number}/${visit.id}`}
-                            class="group relative block bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-50
-               hover:shadow-[0_12px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300"
-                        >
-                            <div class="flex items-start justify-between">
-                                <div>
-                                    <h3
-                                        class="text-[16px] font-semibold text-slate-800 group-hover:text-emerald-900 transition-colors"
-                                    >
-                                        {formatName(visit.participant)}
-                                    </h3>
+    href={`/visits/visit${visit.visit_number}/${visit.id}`}
+    class="group relative block bg-white rounded-xl p-5 border border-slate-100/80
+           shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] 
+           hover:shadow-[0_8px_25px_-4px_rgba(0,0,0,0.08)] 
+           hover:border-slate-200 hover:-translate-y-0.5 transition-all duration-300 ease-out"
+>
+    <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-1.5">
+            <h3 class="text-[17px] text-slate-800">
+                <span class="font-semibold tracking-tight group-hover:text-emerald-950 transition-colors">
+                    {formatName(visit.participant)}
+                </span>
+                {#if visit.participant?.screening_id}
+                    <span class="ml-2 text-slate-400 font-medium text-[15px]">
+                        {visit.participant.screening_id}
+                    </span>
+                {/if}
+            </h3>
 
-                                    <div class="flex items-center gap-3 mt-1.5">
-                                        <span class="text-xs font-medium text-slate-500">
-                                            Visit {visit.visit_number}
-                                        </span>
-                                        {#if visit.participant?.screening_id}
-                                            <span class="text-slate-300 text-[10px]">•</span>
-                                            <span class="font-mono text-xs text-slate-400 tracking-tight">
-                                                {visit.participant.screening_id}
-                                            </span>
-                                        {/if}
-                                    </div>
-                                </div>
+            <div class="flex items-center gap-4 text-xs font-semibold">
+                
+                <div class="flex items-center gap-1.5 bg-amber-200 px-2 py-1 rounded-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>
+                    </svg>
+                    <span>
+                        Due {formatDatePretty(visit.due_date)}
+                    </span>
+                </div>
 
-                                <div class="flex flex-col items-end">
-                                    <div
-                                        class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 transition-colors group-hover:bg-rose-100/80"
-                                    >
-                                        <div class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></div>
-                                        <span class="text-xs font-bold tracking-wide"
-                                            >{formatDatePretty(visit.due_date)}</span
-                                        >
-                                    </div>
-                                    <span
-                                        class="text-[10px] font-medium text-slate-300 mt-1 uppercase tracking-wider mr-1"
-                                        >Due Date</span
-                                    >
-                                </div>
-                            </div>
-                        </a>
+                {#if visit.scheduled_on}
+                    <div class="flex items-center gap-1.5  bg-emerald-200 px-2 py-1 rounded-md">
+                        <Phone size ={14} />
+                        <span>
+                            {formatDatePretty(visit.scheduled_on)}
+                        </span>
+                    </div>
+                {/if}
+            </div>
+        </div>
+
+        <div class="flex flex-col items-center justify-center pl-6 border-l border-slate-50">
+            <span class="font-thin text-slate-500 leading-none uppercase">
+                visit
+            </span>
+            <span class="text-3xl font-semibold text-slate-700 leading-none mt-0.5">
+            {visit.visit_number}
+            </span>
+        </div>
+    </div>
+</a>
                     {/each}
                 </div>
             {/if}
