@@ -6,7 +6,8 @@
 		CheckCircle2,
 		CircleAlert,
 		CheckCircle,
-		CircleCheck
+		CircleCheck,
+		ExternalLink
 	} from '@lucide/svelte';
 
 	interface Props {
@@ -62,7 +63,10 @@
 		</div>
 
 		<h1 class="text-3xl font-bold text-slate-900 tracking-tight mt-1">
-			{fullName}
+			<a href={`/participants/${participant.id}`} class="inline-flex items-center gap-2 group">
+				<span>{fullName}</span>
+				<ExternalLink class="text-slate-400" />
+			</a>
 		</h1>
 
 		{#if participant.phone}

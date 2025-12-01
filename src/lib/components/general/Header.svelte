@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { navigating } from '$app/stores';
-	import { LogOut, Menu, UserSearch, Calendar } from '@lucide/svelte';
+	import { LogOut, Menu, UserSearch, Calendar, Table } from '@lucide/svelte';
 
 	let { user } = $props();
 	let isNavOpen = $state(false);
@@ -41,6 +41,16 @@
 						<UserSearch class="w-5 h-5" />
 					</a>
 
+					<!-- Masterchart icon that navigates to /masterchart -->
+					<a
+						href="/masterchart"
+						class="inline-flex items-center justify-center rounded-full p-1.5 text-slate-700 hover:bg-slate-100 transition-colors"
+						aria-label="Master chart"
+					>
+						<!-- You can replace this with an appropriate icon for Masterchart -->
+						<Table class="w-5 h-5" />
+					</a>
+
 					<!-- Menu icon that opens dropdown with only Logout -->
 					<button
 						type="button"
@@ -71,7 +81,7 @@
 		<!-- Emerald animated bottom loader while navigating -->
 		{#if $navigating}
 			<div class="relative h-0.5 overflow-hidden w-full">
-				<div class="absolute inset-y-0 left-0 w-1/3 bg-emerald-500 animate-nav-loader" />
+				<div class="absolute inset-y-0 left-0 w-1/3 bg-emerald-500 animate-nav-loader"></div>
 			</div>
 		{/if}
 	</header>

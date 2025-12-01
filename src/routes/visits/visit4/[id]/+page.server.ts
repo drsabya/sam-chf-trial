@@ -178,34 +178,6 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	// Auto-save voucher_given when radio is changed
-	updateVoucher: async ({ request, params }) => {
-		const id = params.id;
-		if (!id) throw error(400, 'Visit ID is required');
-
-		const formData = await request.formData();
-		const voucher_status = formData.get('voucher_status') as string | null;
-
-		if (!voucher_status) {
-			return fail(400, { ok: false, message: 'voucher_status is required' });
-		}
-
-		const voucher_given =
-			voucher_status === 'given' ? true : voucher_status === 'not_given' ? false : null;
-
-		const { error: updateErr } = await supabase
-			.from('visits')
-			.update({ voucher_given })
-			.eq('id', id);
-
-		if (updateErr) {
-			console.error('Error updating voucher_given in Visit 4:', updateErr);
-			return fail(500, { ok: false, message: 'Failed to update voucher' });
-		}
-
-		return { ok: true };
-	},
-
 	// Conclude Visit 4 → set visit_date (voucher already stored) and auto-create Visit 5
 	conclude: async ({ params, fetch }) => {
 		const id = params.id;
