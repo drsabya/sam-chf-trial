@@ -83,6 +83,10 @@ export const actions: Actions = {
 		const ageRaw = (formData.get('age') ?? '').toString().trim();
 		const incomeRaw = (formData.get('income') ?? '').toString().trim();
 
+		// Checkboxes → booleans
+		const ltfu = formData.get('ltfu') !== null;
+		const consent_withdrawn = formData.get('consent_withdrawn') !== null;
+
 		const values = {
 			first_name,
 			middle_name,
@@ -94,7 +98,9 @@ export const actions: Actions = {
 			education,
 			occupation,
 			age: ageRaw,
-			income: incomeRaw
+			income: incomeRaw,
+			ltfu,
+			consent_withdrawn
 		};
 
 		// Basic validation: phone mandatory
@@ -146,7 +152,9 @@ export const actions: Actions = {
 			education: education || null,
 			occupation: occupation || null,
 			age,
-			income
+			income,
+			ltfu,
+			consent_withdrawn
 		};
 
 		if (initials) {

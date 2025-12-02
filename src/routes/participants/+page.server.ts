@@ -10,6 +10,7 @@ type ParticipantRow = {
 	last_name: string | null;
 	screening_id: string;
 	randomization_id: string | null;
+	screening_failure: boolean | null;
 	created_at: string;
 };
 
@@ -17,7 +18,9 @@ export const load: PageServerLoad = async () => {
 	// Fetches all participants without any search filter
 	let query = supabase
 		.from('participants')
-		.select('id, first_name, middle_name, last_name, screening_id, randomization_id, created_at');
+		.select(
+			'id, first_name, middle_name, last_name, screening_id, randomization_id, screening_failure, created_at'
+		);
 
 	// Basic order from DB (we'll re-sort by numeric screening id in JS)
 	query = query.order('created_at', { ascending: false });
@@ -47,6 +50,5 @@ export const load: PageServerLoad = async () => {
 
 	return {
 		participants
-		// No need to return 'search' anymore as the server doesn't handle it
 	};
 };

@@ -15,66 +15,47 @@ export const load: PageServerLoad = async () => {
 		.order('due_date', { ascending: true });
 
 	if (visitsError) {
-		console.error('Error loading visits:', {
-			message: visitsError.message,
-			details: (visitsError as any)?.details,
-			hint: (visitsError as any)?.hint,
-			code: (visitsError as any)?.code
-		});
-		throw error(500, 'Failed to load upcoming visits');
+		console.error('Error loading visits:', visitsError);
+		throw error(500, 'Failed to load visits');
 	}
 
-	// 2) Filter to "upcoming" in JS: due_date >= today (date-only),
-	// and exclude withdrawn / death == true
-	const today = new Date();
-	today.setHours(0, 0, 0, 0);
+	// 2) JS filter — now ONLY remove visits that are withdrawn or dead
+	const activeVisits =
+		(visitsRaw ?? []).filter((v) => v.withdrawn !== true && v.death !== true) ?? [];
 
-	const activeUpcomingVisits =
-		(visitsRaw ?? []).filter((v) => {
-			if (!v.due_date) return false;
-
-			const d = new Date(v.due_date);
-			if (Number.isNaN(d.getTime())) return false;
-
-			d.setHours(0, 0, 0, 0);
-
-			const isUpcoming = d.getTime() >= today.getTime();
-			const isActive = v.withdrawn !== true && v.death !== true;
-
-			return isUpcoming && isActive;
-		}) ?? [];
-
-	// 3) Fetch participant details for these visits
-	const participantIds = Array.from(new Set(activeUpcomingVisits.map((v) => v.participant_id)));
-
+	// 3) Fetch participant details (including status flags)
+	const participantIds = Array.from(new Set(activeVisits.map((v) => v.participant_id)));
 	let participantsById: Record<string, any> = {};
 
 	if (participantIds.length > 0) {
 		const { data: participants, error: participantsError } = await supabase
 			.from('participants')
-			.select('id, first_name, middle_name, last_name, screening_id, randomization_id')
+			.select(
+				'id, first_name, middle_name, last_name, screening_id, randomization_id, ltfu, consent_withdrawn'
+			)
 			.in('id', participantIds);
 
 		if (participantsError) {
-			console.error('Error loading participants for upcoming visits:', {
-				message: participantsError.message,
-				details: (participantsError as any)?.details,
-				hint: (participantsError as any)?.hint,
-				code: (participantsError as any)?.code
-			});
-			throw error(500, 'Failed to load upcoming visits');
+			console.error('Error loading participants:', participantsError);
+			throw error(500, 'Failed to load participants');
 		}
 
 		participantsById = Object.fromEntries((participants ?? []).map((p) => [p.id, p]));
 	}
 
-	// 4) Attach participant info
-	const visits = activeUpcomingVisits.map((v) => ({
+	// 4) Filter OUT participants who are LTFU or have withdrawn consent
+	const filteredVisits = activeVisits.filter((v) => {
+		const p = participantsById[v.participant_id];
+		// If somehow participant missing, we keep it visible rather than silently drop
+		if (!p) return true;
+		return p.ltfu !== true && p.consent_withdrawn !== true;
+	});
+
+	// 5) Attach participant info
+	const visits = filteredVisits.map((v) => ({
 		...v,
 		participant: participantsById[v.participant_id] ?? null
 	}));
 
-	return {
-		visits
-	};
+	return { visits };
 };

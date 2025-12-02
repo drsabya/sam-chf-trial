@@ -159,7 +159,7 @@
 			<div>
 				<h1 class="text-xl font-semibold text-slate-900">Master Chart</h1>
 				<p class="text-xs text-slate-500 mt-1">
-					One row per participant. Scroll horizontally to see more visits.
+					Click on participant name to go to visits. Scroll horizontally to see more visits.
 				</p>
 			</div>
 
@@ -252,9 +252,15 @@
 								<tr class="hover:bg-slate-50/80 transition-colors">
 									<!-- Sticky Name Cell -->
 									<td
-										class="px-4 py-2.5 text-slate-900 font-medium sm:sticky sm:left-0 bg-white z-10 border-r border-slate-200/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]"
+										class="px-4 py-2.5 font-medium sm:sticky sm:left-0 bg-white z-10 border-r border-slate-200/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]"
 									>
-										{formatName(participant)}
+										<a
+											href={`/participants/${participant.id}/visits`}
+											class=" hover:text-slate-500 block truncate"
+											title="View visits for {formatName(participant)}"
+										>
+											{formatName(participant)}
+										</a>
 									</td>
 									<!-- Sticky Screening ID Cell -->
 									<td

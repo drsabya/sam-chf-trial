@@ -1,10 +1,21 @@
+<!-- src/routes/participants/+page.svelte -->
 <script lang="ts">
 	import type { PageData } from './$types';
+
+	type Participant = {
+		id: string;
+		first_name: string | null;
+		middle_name: string | null;
+		last_name: string | null;
+		screening_id: string;
+		randomization_id: string | null;
+		screening_failure: boolean | null;
+	};
 
 	let { data }: { data: PageData } = $props();
 
 	// Use the participants fetched from the server
-	const allParticipants = data.participants;
+	const allParticipants = data.participants as Participant[];
 
 	// Use $state for the search input to make it reactive
 	let search = $state('');
@@ -20,8 +31,8 @@
 			.join(' ');
 	}
 
-	function screeningBadge(screening_id: string) {
-		return screening_id || '—';
+	function screeningBadge(screening_id: string | null | undefined) {
+		return screening_id && screening_id.trim().length > 0 ? screening_id : '—';
 	}
 
 	// Reactive filtering logic
@@ -53,10 +64,10 @@
 		/>
 	</div>
 
-	<div class="">
+	<div>
 		{#if filteredParticipants().length === 0}
 			<p class="px-4 py-6 text-sm text-slate-500 text-center">
-				No participants found matching **{search}**.
+				No participants found matching "{search}".
 			</p>
 		{:else}
 			<ul>
@@ -72,10 +83,26 @@
 								</span>
 							</div>
 
-							<span
-								class="font-light"
-							>
-								{screeningBadge(p.screening_id)}
+							<!-- IDs + failure flag -->
+							<span class="font-mono text-xs text-slate-700 flex items-center gap-2">
+								<span class="flex items-center gap-1">
+									<span>{screeningBadge(p.screening_id)}</span>
+
+									{#if p.screening_failure}
+										<span
+											class="inline-flex items-center justify-center rounded-full border border-red-200 bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-600"
+											title="Screening failure"
+										>
+											F
+										</span>
+									{/if}
+								</span>
+
+								{#if p.randomization_id}
+									<span class="text-[11px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">
+										{p.randomization_id}
+									</span>
+								{/if}
 							</span>
 						</a>
 

@@ -16,6 +16,7 @@ type ParticipantRow = {
 	initials: string | null;
 	screening_id: string | null;
 	randomization_id: string | null;
+	screening_failure: boolean | null;
 };
 
 type VisitRow = {
@@ -51,7 +52,8 @@ export const load: PageServerLoad = async ({ params }) => {
       phone,
       initials,
       screening_id,
-      randomization_id
+      randomization_id,
+      screening_failure
     `
 		)
 		.eq('id', participantId)
