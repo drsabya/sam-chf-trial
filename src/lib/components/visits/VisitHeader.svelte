@@ -63,7 +63,7 @@
 		</div>
 
 		<h1 class="text-3xl font-bold text-slate-900 tracking-tight mt-1">
-			<a href={`/participants/${participant.id}`} class="inline-flex items-center gap-2 group">
+			<a href={`/participants/${participant.id}/visits`} class="inline-flex items-center gap-2 group">
 				<span>{fullName}</span>
 				<ExternalLink class="text-slate-400" />
 			</a>
