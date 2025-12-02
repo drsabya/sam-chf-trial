@@ -11,14 +11,6 @@
 	// Filter state: Default to showing only randomized participants
 	let showRandomizedOnly = $state(true);
 
-	// Derived filtered list of participants
-	let filteredParticipants = $derived.by(() => {
-		if (showRandomizedOnly) {
-			return participants.filter((p) => p.randomization_id !== null && p.randomization_id !== '');
-		}
-		return participants;
-	});
-
 	function formatName(participant: any | null) {
 		if (!participant) return 'Unknown participant';
 		const parts = [participant.first_name, participant.middle_name, participant.last_name]
@@ -26,6 +18,39 @@
 			.filter(Boolean);
 		return parts.join(' ') || 'Unknown participant';
 	}
+
+	// Helper: numeric sort key based on screening_id (e.g. "S10" -> 10)
+	function getScreeningSortKey(p: any): number {
+		const raw = (p?.screening_id ?? '').toString();
+		const match = raw.match(/\d+/); // first number in the string
+		if (!match) return Number.POSITIVE_INFINITY;
+		const num = Number.parseInt(match[0], 10);
+		return Number.isNaN(num) ? Number.POSITIVE_INFINITY : num;
+	}
+
+	// Derived filtered + NATURALLY sorted list of participants
+	let filteredParticipants = $derived.by(() => {
+		const base = showRandomizedOnly
+			? participants.filter((p) => p.randomization_id !== null && p.randomization_id !== '')
+			: participants;
+
+		// Sort like S1, S2, ... S9, S10, ... based on numeric part
+		return base
+			.slice()
+			.sort((a, b) => {
+				const aKey = getScreeningSortKey(a);
+				const bKey = getScreeningSortKey(b);
+
+				if (aKey === bKey) {
+					// fall back to lexicographic when numeric part is same / missing
+					const aId = (a.screening_id ?? '') as string;
+					const bId = (b.screening_id ?? '') as string;
+					return aId.localeCompare(bId);
+				}
+
+				return aKey - bKey;
+			});
+	});
 
 	// Map visits for quick lookup: participant_id -> visit_number -> VisitRow
 	type VisitsByParticipant = Record<string, Record<number, VisitRow>>;
@@ -163,7 +188,7 @@
 					</button>
 				</div>
 
-				<!-- Variable Selector (Label removed as requested) -->
+				<!-- Variable Selector -->
 				<div class="relative w-full sm:w-auto">
 					<select
 						bind:value={selectedVariable}
@@ -207,8 +232,8 @@
 								>
 									Screening ID
 								</th>
-								<!-- New Columns (Not Sticky to save space on mobile, or could be sticky if needed) -->
-								<th class="text-left px-4 py-3 font-semibold bg-slate-50"> Rand. ID </th>
+								<!-- New Columns -->
+								<th class="text-left px-4 py-3 font-semibold bg-slate-50">Rand. ID</th>
 								<th
 									class="text-left px-4 py-3 font-semibold bg-slate-50 border-r border-slate-200/60"
 								>
@@ -265,8 +290,8 @@
 </div>
 
 <style>
-	/* Custom utility to fix sticky left offset for the second column if Tailwind arbitrarily fails, 
-       though sm:left-[10rem] usually works. Adjust 10rem to match the approximate width of the Name column. */
+	/* Custom utility to fix sticky left offset for the second column if Tailwind arbitrarily fails,
+	   though sm:left-[10rem] usually works. Adjust 10rem to match the approximate width of the Name column. */
 	@media (min-width: 640px) {
 		th.sm\:sticky.sm\:left-\[10rem\],
 		td.sm\:sticky.sm\:left-\[10rem\] {

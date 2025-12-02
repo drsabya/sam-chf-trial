@@ -72,7 +72,7 @@ export type VisitRow = {
 
 export const load: PageServerLoad = async () => {
 	// 1) Load all participants with screening_id
-	// Added randomization_id and randomization_code to the select query
+	// Includes randomization_id and randomization_code
 	const { data: participantsData, error: participantsError } = await supabase
 		.from('participants')
 		.select(
@@ -95,7 +95,7 @@ export const load: PageServerLoad = async () => {
 
 	// If no participants, skip loading visits
 	if (participants.length === 0) {
-		return {
+	 return {
 			participants,
 			visits: [] as VisitRow[]
 		};

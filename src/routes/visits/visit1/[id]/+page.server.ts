@@ -190,7 +190,8 @@ export const actions: Actions = {
 
     /* ---------------------------------------------
        CONCLUDE VISIT 1
-       - Handles voucher + screening outcome + randomization
+       - Handles voucher (only if already randomized)
+       - Handles screening outcome & randomization
        - Delegates visit_date + next visit creation to /apis/visits/conclude
     --------------------------------------------- */
     conclude: async ({ request, params, fetch }) => {
@@ -203,7 +204,7 @@ export const actions: Actions = {
         // Capture optional visit_date override from form
         const visit_date_override = formData.get('visit_date') as string | null;
 
-        // Voucher is always required
+        // Voucher is always required (but will be updated ONLY in already-randomized case)
         if (!voucher_status) {
             return fail(400, {
                 message: 'Voucher status is required.'
@@ -264,24 +265,12 @@ export const actions: Actions = {
            CASE B: Not randomized yet → true screening conclusion
            → Need screening_outcome
            → visit_date + next visit handled by /apis/visits/conclude
+           ⚠️ IMPORTANT: We DO NOT touch voucher_given here.
         ------------------------------------------------- */
         if (!screening_outcome) {
             return fail(400, {
                 message: 'Screening outcome is required to conclude screening.'
             });
-        }
-
-        // Always update voucher_given (if provided) alongside screening outcome
-        if (voucherGiven !== null) {
-            const { error: vUpdateErr } = await supabase
-                .from('visits')
-                .update({ voucher_given: voucherGiven })
-                .eq('id', id);
-
-            if (vUpdateErr) {
-                console.error('Error updating voucher on conclude:', vUpdateErr);
-                throw error(500, 'Could not update visit voucher status');
-            }
         }
 
         // --- B1: Screening FAILURE ---

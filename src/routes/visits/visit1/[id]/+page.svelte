@@ -17,7 +17,7 @@
     import VisitEcho from '$lib/components/visits/VisitEcho.svelte';
     import VisitSafetyLabs from '$lib/components/visits/VisitSafetyLabs.svelte';
     import VisitScheduling from '$lib/components/visits/VisitScheduling.svelte';
-	import VisitBloodCollection from '$lib/components/visits/VisitBloodCollection.svelte';
+    import VisitBloodCollection from '$lib/components/visits/VisitBloodCollection.svelte';
 
     let { data }: PageProps = $props();
     let visit = $state(data.visit);
@@ -87,8 +87,8 @@
         <div class="flex flex-col gap-6">
             <VisitScheduling bind:visit />
             <section in:fly={{ y: 20, delay: 100, duration: 600 }}>
-				<VisitBloodCollection {visit} />
-			</section>
+                <VisitBloodCollection {visit} />
+            </section>
 
             <VisitEcg {participant} {visit} sectionTitle="ECG" />
 

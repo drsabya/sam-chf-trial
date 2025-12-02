@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { navigating } from '$app/stores';
-	import { LogOut, Menu, Search, Calendar, Table } from '@lucide/svelte';
+	import { LogOut, Menu, Search, Calendar, Table, Plus } from '@lucide/svelte';
 
 	let { user } = $props();
 	let isNavOpen = $state(false);
@@ -23,6 +23,14 @@
 
 				<!-- Right side: Icons -->
 				<div class="flex items-center gap-2">
+
+					<a
+						href="/screening"
+						class="inline-flex items-center justify-center rounded-full p-1.5 text-slate-700 hover:bg-slate-100 transition-colors"
+						aria-label="Home"
+					>
+						<Plus class="w-5 h-5" />
+					</a>
 					<!-- Calendar icon that navigates to / -->
 					<a
 						href="/"
