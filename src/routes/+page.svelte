@@ -11,9 +11,10 @@
         List,
         ChevronLeft,
         ChevronRight,
-        ChevronDown, // Added for accordion
+        ChevronDown, 
         Clock,
-        User
+        User,
+        Wallet // <--- Add this
     } from '@lucide/svelte';
 
     let { data }: { data: PageData } = $props();
@@ -230,30 +231,32 @@
             </p>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
-            <a href="/leads" class="group flex flex-col items-center justify-center py-5 px-2 rounded-2xl bg-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-white hover:border-emerald-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300">
-                <div class="text-slate-400 group-hover:text-emerald-600 transition-colors duration-300">
-                    <BookUser class="w-6 h-6" />
-                </div>
-                <span class="text-[11px] mt-3 font-semibold text-slate-500 group-hover:text-emerald-900 tracking-wide">Leads</span>
+        <nav class="flex flex-wrap gap-2">
+            <a href="/screening" class="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-medium shadow-xl/5 shadow-emerald-200 hover:bg-emerald-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+                <Plus class="w-4 h-4" />
+                <span>Screening</span>
             </a>
-            <a href="/participants" class="group flex flex-col items-center justify-center py-5 px-2 rounded-2xl bg-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-white hover:border-emerald-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300">
-                <div class="text-slate-400 group-hover:text-emerald-600 transition-colors duration-300">
-                    <Search class="w-6 h-6" />
-                </div>
-                <span class="text-[11px] mt-3 font-semibold text-slate-500 group-hover:text-emerald-900 tracking-wide">Participants</span>
+
+            <a href="/leads" class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95">
+                <BookUser class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                <span>Leads</span>
             </a>
-            <a href="/masterchart" class="group flex flex-col items-center justify-center py-5 px-2 rounded-2xl bg-white shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-white hover:border-emerald-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300">
-                <div class="text-slate-400 group-hover:text-emerald-600 transition-colors duration-300">
-                    <Table class="w-6 h-6" />
-                </div>
-                <span class="text-[11px] mt-3 font-semibold text-slate-500 group-hover:text-emerald-900 tracking-wide">Masterchart</span>
+
+            <a href="/participants" class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95">
+                <Search class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                <span>Search</span>
             </a>
-            <a href="/screening" class="group flex flex-col items-center justify-center py-5 px-2 rounded-2xl bg-emerald-600 text-white shadow-[0_8px_20px_rgb(5,150,105,0.25)] hover:bg-emerald-700 hover:shadow-[0_12px_25px_rgb(5,150,105,0.35)] hover:-translate-y-1 transition-all duration-300">
-                <Plus class="w-6 h-6 text-emerald-50" />
-                <span class="text-[11px] mt-3 font-semibold tracking-wide text-white">Screening</span>
+
+            <a href="/masterchart" class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95">
+                <Table class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                <span>Masterchart</span>
             </a>
-        </div>
+
+            <a href="/finances" class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95">
+                <Wallet class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                <span>Finances</span>
+            </a>
+        </nav>
 
         <div class="space-y-5">
             <div class="flex items-center justify-between px-1">
@@ -279,7 +282,7 @@
 
             {#if bestOpdSlot && viewMode === 'list'}
                 <div class="px-1 mb-2">
-                    <div class="bg-emerald-200 border border-emerald-100 rounded-xl overflow-hidden transition-all duration-300">
+                    <div class="bg-emerald-50 border border-emerald-400 rounded-xl overflow-hidden transition-all duration-300">
                         <button 
                             onclick={() => showSuggestionDetails = !showSuggestionDetails}
                             class="w-full flex items-center justify-between px-4 py-3 text-left focus:outline-none"

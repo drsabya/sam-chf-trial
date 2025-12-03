@@ -1,3 +1,4 @@
+<!-- src/routes/leads/[id]/+page.svelte -->
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
 	import { Phone, Calendar, UserX, CheckCircle2 } from '@lucide/svelte';
@@ -26,7 +27,7 @@
 		const d = new Date(value);
 		if (Number.isNaN(d.getTime())) return '';
 		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-			d.getDate()
+			d.getMonth() + 1
 		).padStart(2, '0')}`;
 	}
 
@@ -43,17 +44,37 @@
 			: Boolean(lead.was_called)
 	);
 
-	// "Patient willing" checkbox (positive semantics)
-	let patientWillingChecked = $state(
-		form?.values?.patient_willing !== undefined
-			? Boolean(form.values.patient_willing)
-			: lead.patient_willing === true
+	// Patient status: 'unknown' | 'willing' | 'unwilling'
+	type PatientStatus = 'unknown' | 'willing' | 'unwilling';
+
+	const initialStatusFromLead: PatientStatus =
+		lead.patient_willing === true
+			? 'willing'
+			: lead.patient_willing === false
+			? 'unwilling'
+			: 'unknown';
+
+	let patientStatus = $state<PatientStatus>(
+		(form?.values?.patient_status as PatientStatus | undefined) ?? initialStatusFromLead
 	);
+
+	// Track whether user explicitly hit "Clear selection"
+	let clearStatus = $state(false);
 
 	// Date value for scheduling
 	let scheduledOnValue = $state(
 		(form?.values?.scheduled_on as string | undefined) ?? toDateInputValue(lead.scheduled_on)
 	);
+
+	// Derived helper
+	let isPatientWilling = $derived(patientStatus === 'willing');
+
+	// If user selects willing/unwilling again, clearStatus should reset
+	$effect(()=>{
+		if (patientStatus === 'willing' || patientStatus === 'unwilling') {
+			clearStatus = false;
+		}
+	})
 </script>
 
 <div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans text-slate-800">
@@ -79,8 +100,12 @@
 								href={`tel:${lead.phone}`}
 								class="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-emerald-600 mt-1 transition-colors"
 							>
-								<Phone class="w-3.5 h-3.5" />
 								<span>{lead.phone}</span>
+								<span
+									class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-50 border border-emerald-100"
+								>
+									<Phone class="w-3.5 h-3.5" />
+								</span>
 							</a>
 						{/if}
 					</div>
@@ -117,6 +142,9 @@
 
 			<div class="p-8">
 				<form method="POST" action="?/update" class="space-y-8">
+					<!-- Hidden clear-status field -->
+					<input type="hidden" name="clear_status" value={clearStatus ? '1' : ''} />
+
 					<!-- Contact details -->
 					<div class="space-y-3">
 						<label for="phone" class="text-sm font-bold tracking-wide text-gray-400 uppercase">
@@ -143,12 +171,13 @@
 					</div>
 
 					<!-- Call outcome -->
-					<div class="space-y-3">
+					<div class="space-y-4">
 						<h3 class="text-sm font-bold tracking-wide text-gray-400 uppercase">Call Outcome</h3>
+
+						<!-- Patient contacted -->
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-							<!-- Patient contacted -->
 							<label
-								class="relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border cursor-pointer transition-all duration-200 select-none text-center h-28
+								class="relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border cursor-pointer transition-all duration-200 select-none text-center h-24
                                 {wasCalledChecked
 									? 'bg-emerald-50/50 border-emerald-200 shadow-sm'
 									: 'bg-white border-gray-100 hover:border-emerald-200 hover:bg-gray-50'}"
@@ -174,35 +203,84 @@
 									Patient Contacted
 								</span>
 							</label>
+						</div>
 
-							<!-- Patient willing -->
-							<label
-								class="relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border cursor-pointer transition-all duration-200 select-none text-center h-28
-                                {patientWillingChecked
-									? 'bg-emerald-50/50 border-emerald-200 shadow-sm'
-									: 'bg-white border-gray-100 hover:border-emerald-200 hover:bg-gray-50'}"
-							>
-								<input
-									type="checkbox"
-									name="patient_willing"
-									bind:checked={patientWillingChecked}
-									class="absolute opacity-0 w-0 h-0"
-								/>
-								<div
-									class="p-2 rounded-full {patientWillingChecked
-										? 'bg-emerald-100 text-emerald-700'
-										: 'bg-gray-100 text-gray-400'}"
+						<!-- Patient willing / unwilling (explicit options) -->
+						<div class="space-y-2">
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+								<!-- Patient willing -->
+								<label
+									class="relative flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border cursor-pointer transition-all duration-200 select-none text-center h-20
+                                    {patientStatus === 'willing'
+										? 'bg-emerald-50/50 border-emerald-200 shadow-sm'
+										: 'bg-white border-gray-100 hover:border-emerald-200 hover:bg-gray-50'}"
 								>
-									<UserX class="w-5 h-5" />
-								</div>
-								<span
-									class="text-xs font-bold {patientWillingChecked
-										? 'text-emerald-900'
-										: 'text-gray-500'}"
+									<input
+										type="radio"
+										name="patient_status"
+										value="willing"
+										bind:group={patientStatus}
+										class="absolute opacity-0 w-0 h-0"
+									/>
+									<div
+										class="p-1.5 rounded-full {patientStatus === 'willing'
+											? 'bg-emerald-100 text-emerald-700'
+											: 'bg-gray-100 text-gray-400'}"
+									>
+										<CheckCircle2 class="w-4 h-4" />
+									</div>
+									<span
+										class="text-[11px] font-bold {patientStatus === 'willing'
+											? 'text-emerald-900'
+											: 'text-gray-500'}"
+									>
+										Patient Willing
+									</span>
+								</label>
+
+								<!-- Patient unwilling -->
+								<label
+									class="relative flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border cursor-pointer transition-all duration-200 select-none text-center h-20
+                                    {patientStatus === 'unwilling'
+										? 'bg-red-50 border-red-200 shadow-sm'
+										: 'bg-white border-gray-100 hover:border-red-200 hover:bg-gray-50'}"
 								>
-									Patient Willing
-								</span>
-							</label>
+									<input
+										type="radio"
+										name="patient_status"
+										value="unwilling"
+										bind:group={patientStatus}
+										class="absolute opacity-0 w-0 h-0"
+									/>
+									<div
+										class="p-1.5 rounded-full {patientStatus === 'unwilling'
+											? 'bg-red-100 text-red-700'
+											: 'bg-gray-100 text-gray-400'}"
+									>
+										<UserX class="w-4 h-4" />
+									</div>
+									<span
+										class="text-[11px] font-bold {patientStatus === 'unwilling'
+											? 'text-red-900'
+											: 'text-gray-500'}"
+									>
+										Patient Unwilling
+									</span>
+								</label>
+							</div>
+
+							<div class="flex justify-end">
+								<button
+									type="button"
+									on:click={() => {
+										patientStatus = 'unknown';
+										clearStatus = true;
+									}}
+									class="inline-flex items-center px-3 py-1.5 text-[11px] rounded-full border border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-600 hover:bg-red-50/60 transition-colors"
+								>
+									Clear selection
+								</button>
+							</div>
 						</div>
 					</div>
 
@@ -223,8 +301,8 @@
 								name="scheduled_on"
 								type="date"
 								bind:value={scheduledOnValue}
-								disabled={!patientWillingChecked}
-								class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-slate-800 focus:outline-none focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50/50 transition-all duration-200 {patientWillingChecked
+								disabled={!isPatientWilling}
+								class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-slate-800 focus:outline-none focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50/50 transition-all duration-200 {isPatientWilling
 									? ''
 									: 'opacity-60 cursor-not-allowed'}"
 							/>

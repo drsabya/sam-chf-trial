@@ -48,13 +48,11 @@ export const actions: Actions = {
 		const phoneRaw = (formData.get('phone') ?? '').toString().trim();
 		const scheduledOnRaw = (formData.get('scheduled_on') ?? '').toString().trim();
 		const wasCalledRaw = formData.get('was_called');
-		const patientWillingRaw = formData.get('patient_willing');
+		const patientStatusRaw = (formData.get('patient_status') ?? '').toString().trim(); // 'willing' | 'unwilling' | ''
+		const clearStatusRaw = (formData.get('clear_status') ?? '').toString().trim(); // '1' if clear pressed
 
-		// Normalized booleans
+		// Normalized boolean for "was called"
 		const was_called = wasCalledRaw === 'on' || wasCalledRaw === 'true' || wasCalledRaw === '1';
-
-		const patient_willing =
-			patientWillingRaw === 'on' || patientWillingRaw === 'true' || patientWillingRaw === '1';
 
 		// Phone is mandatory
 		if (!phoneRaw) {
@@ -64,22 +62,75 @@ export const actions: Actions = {
 					phone: phoneRaw,
 					scheduled_on: scheduledOnRaw,
 					was_called,
-					patient_willing
+					patient_status: patientStatusRaw || null
 				}
 			});
 		}
 
-		let scheduled_on: string | null = null;
+		// Fetch existing lead so that changing was_called alone does NOT wipe patient_willing
+		const {
+			data: existingLead,
+			error: existingErr
+		} = await supabase
+			.from('leads')
+			.select('patient_willing, scheduled_on')
+			.eq('id', id)
+			.single();
 
-		// Only allow scheduling if patient is willing
-		if (patient_willing && scheduledOnRaw) {
-			const d = new Date(scheduledOnRaw);
-			if (!Number.isNaN(d.getTime())) {
-				scheduled_on = d.toISOString();
-			}
-		} else {
-			// If not willing, explicitly clear scheduled_on
+		if (existingErr || !existingLead) {
+			console.error('Error fetching existing lead in update:', {
+				id,
+				message: existingErr?.message,
+				details: (existingErr as any)?.details,
+				hint: (existingErr as any)?.hint,
+				code: (existingErr as any)?.code
+			});
+
+			return fail(500, {
+				message: 'Could not update lead.',
+				values: {
+					phone: phoneRaw,
+					scheduled_on: scheduledOnRaw,
+					was_called,
+					patient_status: patientStatusRaw || null
+				}
+			});
+		}
+
+		// Start from existing patient_willing
+		let patient_willing: boolean | null = existingLead.patient_willing;
+
+		const clearStatus =
+			clearStatusRaw === '1' || clearStatusRaw === 'true' || clearStatusRaw === 'on';
+
+		// If "Clear selection" used, force null
+		if (clearStatus) {
+			patient_willing = null;
+		} else if (patientStatusRaw === 'willing') {
+			patient_willing = true;
+		} else if (patientStatusRaw === 'unwilling') {
+			patient_willing = false;
+		}
+		// If patientStatusRaw === '' and clearStatus is false, we keep existing patient_willing
+
+		// Scheduling logic
+		let scheduled_on: string | null = existingLead.scheduled_on;
+
+		const isWilling = patient_willing === true;
+
+		if (!isWilling) {
+			// If not willing (false or null), do not keep any schedule
 			scheduled_on = null;
+		} else {
+			if (scheduledOnRaw) {
+				const d = new Date(scheduledOnRaw);
+				if (!Number.isNaN(d.getTime())) {
+					scheduled_on = d.toISOString();
+				}
+			} else {
+				// Clearing the date input should clear scheduling if willing but blank date
+				scheduled_on = null;
+			}
 		}
 
 		const { data, error: err } = await supabase
@@ -116,7 +167,7 @@ export const actions: Actions = {
 					phone: phoneRaw,
 					scheduled_on: scheduledOnRaw,
 					was_called,
-					patient_willing
+					patient_status: patientStatusRaw || null
 				}
 			});
 		}
@@ -129,7 +180,7 @@ export const actions: Actions = {
 				phone: phoneRaw,
 				scheduled_on: scheduledOnRaw,
 				was_called,
-				patient_willing
+				patient_status: patientStatusRaw || null
 			}
 		};
 	}

@@ -30,6 +30,11 @@
 	let uploading = $state(false);
 	let files: File[] = $state([]);
 
+	function r2PublicUrl(key: string | null) {
+		if (!key) return null;
+		return `https://pub-4cd2e47347704d5dab6e20a0bbd4b079.r2.dev/${key}`;
+	}
+
 	let prescriptionPublicUrl = $derived(r2PublicUrl(visit.prescription_src));
 
 	/* --------------------------------------------
@@ -37,7 +42,15 @@
 	--------------------------------------------- */
 	function handleChange(evt: Event) {
 		const target = evt.target as HTMLInputElement;
-		if (target.files) files = Array.from(target.files);
+		if (target.files && target.files.length > 0) {
+			const newFiles = Array.from(target.files);
+
+			// APPEND instead of replace (important for camera multi-capture)
+			files = [...files, ...newFiles];
+
+			// Reset input so selecting the same file / taking another photo also triggers change
+			target.value = '';
+		}
 	}
 
 	function printUrl(e: Event, url: string | null) {
@@ -47,11 +60,6 @@
 		const win = window.open(url, '_blank');
 		if (!win) return;
 		win.onload = () => win.print();
-	}
-
-	function r2PublicUrl(key: string | null) {
-		if (!key) return null;
-		return `https://pub-4cd2e47347704d5dab6e20a0bbd4b079.r2.dev/${key}`;
 	}
 
 	function isImageFile(file: File): boolean {
@@ -189,6 +197,10 @@
 			uploading = false;
 		}
 	}
+
+	function openFilePicker() {
+		document.getElementById('prescription-input')?.click();
+	}
 </script>
 
 <section>
@@ -268,7 +280,7 @@
 						<Printer class="w-4 h-4" />
 					</button>
 					<button
-						onclick={() => document.getElementById('prescription-input')?.click()}
+						onclick={openFilePicker}
 						class="p-2 text-slate-400 hover:text-violet-600 hover:bg-white rounded-lg transition-colors"
 						title="Re-upload"
 					>
@@ -276,18 +288,10 @@
 					</button>
 				</div>
 			</div>
-			<input
-				id="prescription-input"
-				type="file"
-				class="hidden"
-				accept="image/*,.pdf"
-				multiple
-				onchange={handleChange}
-			/>
 		{:else if files.length > 0}
-			<!-- Files selected -->
+			<!-- Files selected (including multiple camera captures) -->
 			<div class="bg-violet-50/50 rounded-xl p-4 border border-violet-100">
-				<div class="flex items-center gap-3 mb-4">
+				<div class="flex items-center gap-3 mb-3">
 					<div
 						class="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center shrink-0"
 					>
@@ -299,46 +303,64 @@
 						<p class="text-sm font-medium text-slate-900 truncate">
 							{files.length === 1 ? files[0].name : 'Files ready to merge'}
 						</p>
-						<p class="text-xs text-slate-500">Ready to convert &amp; upload</p>
+						<p class="text-xs text-slate-500">
+							You can add more pages by clicking the button below.
+						</p>
 					</div>
 					<button
 						onclick={() => {
 							files = [];
 						}}
 						class="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+						title="Clear selection"
 					>
 						✕
 					</button>
 				</div>
-				<button
-					type="button"
-					class="w-full bg-violet-600 text-white font-semibold text-sm py-3 rounded-xl shadow-lg shadow-violet-200 hover:bg-violet-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-					onclick={uploadPrescription}
-				>
-					<CloudUpload class="w-4 h-4" />
-					Upload prescription
-				</button>
+
+				<div class="flex flex-col sm:flex-row gap-2">
+					<button
+						type="button"
+						class="flex-1 border border-violet-200 text-violet-700 bg-white font-semibold text-xs py-2.5 rounded-xl hover:bg-violet-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+						onclick={openFilePicker}
+					>
+						<RefreshCcw class="w-4 h-4" />
+						Add more pages (camera / gallery)
+					</button>
+
+					<button
+						type="button"
+						class="flex-1 bg-violet-600 text-white font-semibold text-sm py-3 rounded-xl shadow-lg shadow-violet-200 hover:bg-violet-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+						onclick={uploadPrescription}
+					>
+						<CloudUpload class="w-4 h-4" />
+						Upload prescription
+					</button>
+				</div>
 			</div>
 		{:else}
 			<!-- No file yet -->
 			<label
+				for="prescription-input"
 				class="group/label flex items-center justify-center gap-3 w-full border border-dashed border-slate-300 rounded-xl py-6 px-4 cursor-pointer hover:border-violet-500 hover:bg-violet-50/10 transition-all duration-300"
 			>
 				<div class="p-2 bg-slate-50 rounded-full group-hover/label:bg-violet-100 transition-colors">
 					<CloudUpload class="w-5 h-5 text-slate-400 group-hover/label:text-violet-600" />
 				</div>
 				<span class="text-sm text-slate-500 font-medium group-hover/label:text-violet-700"
-					>Tap to select prescription</span
+					>Tap to select / capture prescription</span
 				>
-				<input
-					id="prescription-input"
-					type="file"
-					class="hidden"
-					accept="image/*,.pdf"
-					multiple
-					onchange={handleChange}
-				/>
 			</label>
 		{/if}
+
+		<!-- Single hidden input reused everywhere (files + camera, multiple times) -->
+		<input
+			id="prescription-input"
+			type="file"
+			class="hidden"
+			accept="image/*,.pdf"
+			multiple
+			onchange={handleChange}
+		/>
 	</div>
 </section>

@@ -1,3 +1,4 @@
+<!-- src/routes/participants/[id]/visits/+page.svelte -->
 <script lang="ts">
 	import type { PageData } from './$types';
 	import {
@@ -7,11 +8,12 @@
 		CircleCheck,
 		Calendar,
 		ArrowRight,
-		AlertTriangle
+		AlertTriangle,
+		Trash2
 	} from '@lucide/svelte';
 
 	let { data }: { data: PageData } = $props();
-	const { participant, visits } = data;
+	const { participant, visits, isAdmin } = data;
 
 	const initials =
 		participant.initials ??
@@ -33,6 +35,14 @@
 			month: 'short',
 			year: 'numeric'
 		});
+	}
+
+	function dateInputValue(value: string | null | undefined) {
+		if (!value) return '';
+		const d = new Date(value);
+		if (Number.isNaN(d.getTime())) return '';
+		// YYYY-MM-DD for <input type="date">
+		return d.toISOString().slice(0, 10);
 	}
 </script>
 
@@ -117,71 +127,127 @@
 					{@const isCompleted = !!visit.visit_date}
 					{@const dateStr = formatDate(isCompleted ? visit.visit_date : visit.due_date)}
 
-					<a
-						href={`/visits/visit${visit.visit_number}/${visit.id}`}
-						class="group block bg-white rounded-2xl p-2 shadow-xl/2 hover:border-emerald-500 hover:ring-1 hover:ring-emerald-500 hover:shadow-lg hover:shadow-emerald-900/5 hover:-translate-y-0.5 transition-all duration-200"
-					>
-						<div class="flex items-center gap-5">
-							<div
-								class={`h-20 w-20 shrink-0 rounded-xl flex flex-col items-center justify-center border transition-colors duration-200 ${
-									isCompleted
-										? 'bg-emerald-50 border-emerald-100'
-										: 'bg-slate-100 border-slate-200'
-								}`}
-							>
-								<span
-									class={`text-[9px] font-bold uppercase tracking-widest mb-1 ${
-										isCompleted ? 'text-emerald-600' : 'text-slate-400'
+					<div class="space-y-1">
+						<a
+							href={`/visits/visit${visit.visit_number}/${visit.id}`}
+							class="group block bg-white rounded-2xl p-2 shadow-xl/2 hover:border-emerald-500 hover:ring-1 hover:ring-emerald-500 hover:shadow-lg hover:shadow-emerald-900/5 hover:-translate-y-0.5 transition-all duration-200 border border-transparent"
+						>
+							<div class="flex items-center gap-5">
+								<div
+									class={`h-20 w-20 shrink-0 rounded-xl flex flex-col items-center justify-center border transition-colors duration-200 ${
+										isCompleted
+											? 'bg-emerald-50 border-emerald-100'
+											: 'bg-slate-100 border-slate-200'
 									}`}
 								>
-									Visit
-								</span>
-								<span
-									class={`text-3xl font-light leading-none ${
-										isCompleted ? 'text-emerald-700' : 'text-slate-600'
-									}`}
-								>
-									{visit.visit_number}
-								</span>
-							</div>
-
-							<div class="flex-1 min-w-0 py-2">
-								<div class="flex items-center gap-2 mb-1">
-									{#if isCompleted}
-										<div class="flex items-center gap-1.5 text-emerald-600">
-											<CircleCheck size={12} strokeWidth={2.5} />
-											<span
-												class="text-[10px] font-bold uppercase tracking-widest"
-												>Completed</span
-											>
-										</div>
-									{:else}
-										<div class="flex items-center gap-1.5 text-amber-600">
-											<Clock size={12} strokeWidth={2.5} />
-											<span
-												class="text-[10px] font-bold uppercase tracking-widest"
-												>Due</span
-											>
-										</div>
-									{/if}
+									<span
+										class={`text-[9px] font-bold uppercase tracking-widest mb-1 ${
+											isCompleted ? 'text-emerald-600' : 'text-slate-400'
+										}`}
+									>
+										Visit
+									</span>
+									<span
+										class={`text-3xl font-light leading-none ${
+											isCompleted ? 'text-emerald-700' : 'text-slate-600'
+										}`}
+									>
+										{visit.visit_number}
+									</span>
 								</div>
 
-								<h3
-									class={`text-lg font-semibold tracking-tight ${
-										isCompleted ? 'text-slate-900' : 'text-amber-600'
-									}`}
-								>
-									{dateStr}
-								</h3>
-							</div>
+								<div class="flex-1 min-w-0 py-2">
+									<div class="flex items-center gap-2 mb-1">
+										{#if isCompleted}
+											<div class="flex items-center gap-1.5 text-emerald-600">
+												<CircleCheck size={12} strokeWidth={2.5} />
+												<span
+													class="text-[10px] font-bold uppercase tracking-widest"
+													>Completed</span
+												>
+											</div>
+										{:else}
+											<div class="flex items-center gap-1.5 text-amber-600">
+												<Clock size={12} strokeWidth={2.5} />
+												<span
+													class="text-[10px] font-bold uppercase tracking-widest"
+													>Due</span
+												>
+											</div>
+										{/if}
+									</div>
 
-							<div
-								class="pr-5 text-slate-300 group-hover:text-emerald-600 transition-colors"
-							>
-								<ArrowUpRight size={20} strokeWidth={2} />
+									<h3
+										class={`text-lg font-semibold tracking-tight ${
+											isCompleted ? 'text-slate-900' : 'text-amber-600'
+										}`}
+									>
+										{dateStr}
+									</h3>
+								</div>
+
+								<div
+									class="pr-5 text-slate-300 group-hover:text-emerald-600 transition-colors"
+								>
+									<ArrowUpRight size={20} strokeWidth={2} />
+								</div>
 							</div>
-						</div>
-					</a>
+						</a>
+
+						<!-- Admin-only controls -->
+						{#if isAdmin}
+							<div class="flex items-center justify-between gap-3 px-1">
+								{#if !isCompleted}
+									<form
+										method="post"
+										action="?/updateDueDate"
+										class="flex items-center gap-2 text-[11px]"
+									>
+										<input type="hidden" name="visitId" value={visit.id} />
+										<label class="flex items-center gap-1 text-slate-500">
+											<Calendar size={12} />
+											<span class="uppercase tracking-[0.16em] font-semibold">
+												Adjust due date
+											</span>
+										</label>
+										<input
+											name="due_date"
+											type="date"
+											class="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+											value={dateInputValue(visit.due_date)}
+										/>
+										<button
+											type="submit"
+											class="rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-50 hover:bg-emerald-700 transition-colors"
+										>
+											Save
+										</button>
+									</form>
+								{:else}
+									<div class="text-[10px] text-slate-400 italic px-1">
+										Due date locked (visit completed)
+									</div>
+								{/if}
+
+								{#if visit.visit_number > 1}
+									<form
+										method="post"
+										action="?/deleteVisit"
+										class="flex justify-end"
+									>
+										<input type="hidden" name="visitId" value={visit.id} />
+										<button
+											type="submit"
+											class="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-600 hover:bg-rose-100 hover:border-rose-300 transition-colors"
+										>
+											<Trash2 size={12} strokeWidth={2.2} />
+											<span>Delete visit</span>
+										</button>
+									</form>
+								{/if}
+							</div>
+						{/if}
+					</div>
 				{/each}
 			{/if}
 		</main>
