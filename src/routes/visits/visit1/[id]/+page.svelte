@@ -18,6 +18,7 @@
     import VisitSafetyLabs from '$lib/components/visits/VisitSafetyLabs.svelte';
     import VisitScheduling from '$lib/components/visits/VisitScheduling.svelte';
     import VisitBloodCollection from '$lib/components/visits/VisitBloodCollection.svelte';
+	import VisitVoucherDocument from '$lib/components/visits/VisitVoucherDocument.svelte';
 
     let { data }: PageProps = $props();
     let visit = $state(data.visit);
@@ -306,6 +307,9 @@
                         </div>
                     </form>
                 </section>
+                <section class="flex justify-center" in:fly={{ y: 20, delay: 100, duration: 600 }}>
+				<VisitVoucherDocument {visit} {participant} />
+			</section>
             {/if}
         </div>
     </div>

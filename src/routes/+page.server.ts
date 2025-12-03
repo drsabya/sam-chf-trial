@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types';
 import { supabase } from '$lib/supabaseClient';
 import { error } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
 	// 1) Get all visits that have a due_date and are not yet performed
 	const { data: visitsRaw, error: visitsError } = await supabase
 		.from('visits')
@@ -57,5 +57,26 @@ export const load: PageServerLoad = async () => {
 		participant: participantsById[v.participant_id] ?? null
 	}));
 
-	return { visits };
+	// 6) Fetch username for the logged-in user (from user_roles)
+	const session = (locals as any)?.session;
+	const userId = session?.user?.id as string | undefined;
+
+	let username: string | null = null;
+
+	if (userId) {
+		const { data: role, error: roleError } = await supabase
+			.from('user_roles')
+			.select('username')
+			.eq('user_id', userId)
+			.maybeSingle();
+
+		if (roleError) {
+			// Don't kill the page if username lookup fails; just log it
+			console.error('Error loading username:', roleError);
+		} else {
+			username = (role as any)?.username ?? null;
+		}
+	}
+
+	return { visits, username };
 };

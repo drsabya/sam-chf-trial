@@ -12,6 +12,7 @@
 	import VisitEcg from '$lib/components/visits/VisitEcg.svelte';
 	import VisitBloodCollection from '$lib/components/visits/VisitBloodCollection.svelte';
 	import VisitPrescription from '$lib/components/visits/VisitPrescription.svelte';
+	import VisitVoucherDocument from '$lib/components/visits/VisitVoucherDocument.svelte';
 
 	let { data }: PageProps = $props();
 	let visit = $state(data.visit);
@@ -70,6 +71,9 @@
 					labelVisit="Visit 8"
 					description="By default, Visit 8 will be marked completed with today’s date. You may optionally override the visit date below."
 				/>
+			</section>
+			<section class="flex justify-center" in:fly={{ y: 20, delay: 100, duration: 600 }}>
+				<VisitVoucherDocument {visit} {participant} />
 			</section>
 		</div>
 	</div>

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { navigating } from '$app/stores';
-	import { LogOut, Menu, Search, Calendar, Table, Plus } from '@lucide/svelte';
+
+
+	import { LogOut, Menu, Search, Calendar, Table, Plus, CalendarDays } from '@lucide/svelte';
 
 	let { user } = $props();
 	let isNavOpen = $state(false);
@@ -37,7 +39,7 @@
 						class="inline-flex items-center justify-center rounded-full p-1.5 text-slate-700 hover:bg-slate-100 transition-colors"
 						aria-label="Home"
 					>
-						<Calendar class="w-5 h-5" />
+						<CalendarDays class="w-5 h-5" />
 					</a>
 
 					
