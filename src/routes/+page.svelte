@@ -316,6 +316,20 @@
                 <Printer class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
                 <span>MLWHFQ-HFSS</span>
             </a>
+            <a
+                href="https://drive.google.com/file/d/19u7COQLA8bNVpsbkaZEvia2rEEjP0uZ2/view?usp=sharing"
+                class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95"
+            >
+                <Printer class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                <span>ICD-Hindi</span>
+            </a>
+            <a
+                href="https://drive.google.com/file/d/19e0w_32knyl9vT357GSt8yl_mRHicJBm/view?usp=sharing"
+                class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95"
+            >
+                <Printer class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                <span>ICD-Marathi</span>
+            </a>
         </nav>
 
         <div class="space-y-5">
