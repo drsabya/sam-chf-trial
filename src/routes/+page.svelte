@@ -16,19 +16,15 @@
         Clock,
         User,
         Wallet,
-
-		FingerprintPattern,
-
-		Printer
-
-
+        FingerprintPattern,
+        Printer
     } from '@lucide/svelte';
 
     let { data }: { data: PageData } = $props();
 
     // State
     let visits = $state(data.visits ?? []);
-    let viewMode = $state<'list' | 'calendar'>('list');
+    let viewMode = $state<'list' | 'calendar'>('calendar'); // default is now calendar
     let showSuggestionDetails = $state(false); // Toggle for suggestion list
 
     // Calendar State
@@ -232,8 +228,9 @@
         <div class="px-1 pt-2">
             <!-- Username instead of static SAM-CHF -->
             <h1 class="text-3xl font-light tracking-tight text-slate-900">
-    Hi {(data.username ?? 'SAM-CHF').charAt(0).toUpperCase() + (data.username ?? 'SAM-CHF').slice(1)}!
-</h1>
+                Hi {(data.username ?? 'SAM-CHF').charAt(0).toUpperCase() +
+                    (data.username ?? 'SAM-CHF').slice(1)}!
+            </h1>
 
             <p class="text-sm font-medium text-slate-400 mt-1 uppercase tracking-wider">
                 SAM-CHF Trial Dashboard
@@ -292,42 +289,54 @@
                 href="https://drive.google.com/file/d/1blyO-OZpgwAI3nDUl0s7XKxu_Y_L1PAg/view?usp=sharing"
                 class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95"
             >
-                <FingerprintPattern class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                <FingerprintPattern
+                    class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors"
+                />
                 <span>Protocol</span>
             </a>
             <a
-            href="https://drive.google.com/file/d/1V00gOty-ESiI_FnGsj9jzQMOddm7ANC4/view?usp=sharing"
-            class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95"
+                href="https://drive.google.com/file/d/1V00gOty-ESiI_FnGsj9jzQMOddm7ANC4/view?usp=sharing"
+                class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95"
             >
-            <Printer class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
-            <span>CRF</span>
-        </a>
-        <a
-            href="https://drive.google.com/file/d/1PwGfpIoNFeAQREKiPKzN9MfN9fkcZFdv/view?usp=sharing"
-            class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95"
-        >
-            <Printer class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
-            <span>Voucher</span>
-        </a>
+                <Printer
+                    class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors"
+                />
+                <span>CRF</span>
+            </a>
+            <a
+                href="https://drive.google.com/file/d/1PwGfpIoNFeAQREKiPKzN9MfN9fkcZFdv/view?usp=sharing"
+                class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95"
+            >
+                <Printer
+                    class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors"
+                />
+                <span>Voucher</span>
+            </a>
             <a
                 href="https://drive.google.com/file/d/1RFKLXqfOwTYuNJ4eyk1tjRiRus9IBvMZ/view?usp=sharing"
                 class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95"
             >
-                <Printer class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                <Printer
+                    class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors"
+                />
                 <span>MLWHFQ-HFSS</span>
             </a>
             <a
                 href="https://drive.google.com/file/d/19u7COQLA8bNVpsbkaZEvia2rEEjP0uZ2/view?usp=sharing"
                 class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95"
             >
-                <Printer class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                <Printer
+                    class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors"
+                />
                 <span>ICD-Hindi</span>
             </a>
             <a
                 href="https://drive.google.com/file/d/19e0w_32knyl9vT357GSt8yl_mRHicJBm/view?usp=sharing"
                 class="group inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 shadow-xl/3 hover:border-slate-300 hover:text-slate-900 transition-all active:scale-95"
             >
-                <Printer class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                <Printer
+                    class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors"
+                />
                 <span>ICD-Marathi</span>
             </a>
         </nav>
@@ -362,7 +371,7 @@
                 </div>
             </div>
 
-            {#if bestOpdSlot && viewMode === 'list'}
+            {#if bestOpdSlot}
                 <div class="px-1 mb-2">
                     <div
                         class="bg-emerald-50 border border-emerald-400 rounded-xl overflow-hidden transition-all duration-300"

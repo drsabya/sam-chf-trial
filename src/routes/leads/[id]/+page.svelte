@@ -1,7 +1,7 @@
 <!-- src/routes/leads/[id]/+page.svelte -->
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
-	import { Phone, Calendar, UserX, CheckCircle2 } from '@lucide/svelte';
+	import { Phone, Calendar, UserX, CheckCircle2, AlertTriangle } from '@lucide/svelte';
 	import { fade } from 'svelte/transition';
 
 	let { data, form }: { data: PageData; form: ActionData | null } = $props();
@@ -26,12 +26,15 @@
 		if (!value) return '';
 		const d = new Date(value);
 		if (Number.isNaN(d.getTime())) return '';
-		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-			d.getMonth() + 1
-		).padStart(2, '0')}`;
+		const year = d.getFullYear();
+		const month = String(d.getMonth() + 1).padStart(2, '0');
+		const day = String(d.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
 	}
 
 	const phoneValue = (form?.values?.phone as string | undefined) ?? lead.phone ?? '';
+	const commentValueInitial =
+		(form?.values?.comment as string | undefined) ?? (lead.comment as string | null) ?? '';
 
 	/* =============================
        State Logic
@@ -40,7 +43,7 @@
 	// "Patient contacted" checkbox
 	let wasCalledChecked = $state(
 		form?.values?.was_called !== undefined
-			? Boolean(form.values.was_called)
+			? Boolean((form as any).values.was_called)
 			: Boolean(lead.was_called)
 	);
 
@@ -66,15 +69,25 @@
 		(form?.values?.scheduled_on as string | undefined) ?? toDateInputValue(lead.scheduled_on)
 	);
 
+	// Comment value
+	let commentValue = $state(commentValueInitial);
+
+	// Unfit checkbox
+	let unfitChecked = $state(
+		form?.values?.unfit !== undefined
+			? Boolean((form as any).values.unfit)
+			: Boolean(lead.unfit)
+	);
+
 	// Derived helper
 	let isPatientWilling = $derived(patientStatus === 'willing');
 
 	// If user selects willing/unwilling again, clearStatus should reset
-	$effect(()=>{
+	$effect(() => {
 		if (patientStatus === 'willing' || patientStatus === 'unwilling') {
 			clearStatus = false;
 		}
-	})
+	});
 </script>
 
 <div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans text-slate-800">
@@ -110,8 +123,15 @@
 						{/if}
 					</div>
 
-					<div class="text-right">
-						{#if lead.patient_willing === false}
+					<div class="text-right space-y-1">
+						{#if lead.unfit}
+							<span
+								class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100"
+							>
+								<AlertTriangle class="w-3.5 h-3.5 mr-1" />
+								Unfit Lead
+							</span>
+						{:else if lead.patient_willing === false}
 							<span
 								class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100"
 							>
@@ -282,6 +302,50 @@
 								</button>
 							</div>
 						</div>
+
+						<!-- Eligibility / Unfit -->
+						<div class="space-y-2 pt-2 border-t border-gray-100">
+							<h4 class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+								Eligibility
+							</h4>
+							<label
+								class="relative flex items-center justify-between gap-3 p-3 rounded-2xl border cursor-pointer transition-all duration-200 select-none
+                                {unfitChecked
+									? 'bg-red-50 border-red-200 shadow-sm'
+									: 'bg-white border-gray-100 hover:border-red-200 hover:bg-gray-50'}"
+							>
+								<div class="flex items-center gap-3">
+									<div
+										class="p-1.5 rounded-full {unfitChecked
+											? 'bg-red-100 text-red-700'
+											: 'bg-gray-100 text-gray-400'}"
+									>
+										<AlertTriangle class="w-4 h-4" />
+									</div>
+									<div class="flex flex-col items-start">
+										<span
+											class="text-xs font-bold {unfitChecked
+												? 'text-red-900'
+												: 'text-gray-600'}"
+										>
+											Mark as Unfit
+										</span>
+										<span class="text-[11px] text-gray-400">
+											Clinically / logistically unsuitable for SAM-CHF.
+										</span>
+									</div>
+								</div>
+								<input
+									type="checkbox"
+									name="unfit"
+									bind:checked={unfitChecked}
+									class="absolute opacity-0 w-0 h-0"
+								/>
+							</label>
+							<p class="text-[11px] text-right text-gray-400 pr-1">
+								If marked unfit, the lead will not be scheduled.
+							</p>
+						</div>
 					</div>
 
 					<!-- Scheduling -->
@@ -301,8 +365,8 @@
 								name="scheduled_on"
 								type="date"
 								bind:value={scheduledOnValue}
-								disabled={!isPatientWilling}
-								class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-slate-800 focus:outline-none focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50/50 transition-all duration-200 {isPatientWilling
+								disabled={!isPatientWilling || unfitChecked}
+								class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-slate-800 focus:outline-none focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50/50 transition-all duration-200 {isPatientWilling && !unfitChecked
 									? ''
 									: 'opacity-60 cursor-not-allowed'}"
 							/>
@@ -311,7 +375,28 @@
 							Current: {formatDateTime(lead.scheduled_on)}
 						</p>
 						<p class="text-[11px] text-right text-gray-400 pr-1">
-							Note: Scheduling is only saved if patient is marked as willing.
+							Note: Scheduling is only saved if patient is marked as willing and not unfit.
+						</p>
+					</div>
+
+					<!-- Comment / Notes -->
+					<div class="space-y-2">
+						<label
+							for="comment"
+							class="text-sm font-bold tracking-wide text-gray-400 uppercase"
+						>
+							Notes / Comment
+						</label>
+						<textarea
+							id="comment"
+							name="comment"
+							rows="3"
+							bind:value={commentValue}
+							class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50/50 transition-all duration-200 resize-y"
+							placeholder="Any notes about the call, eligibility, reasons for refusal, etc."
+						/>
+						<p class="text-[11px] text-right text-gray-400 pr-1">
+							This is only for your internal notes. It is not shared with the patient.
 						</p>
 					</div>
 

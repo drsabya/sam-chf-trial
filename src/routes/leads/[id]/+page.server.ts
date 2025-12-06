@@ -51,6 +51,11 @@ export const actions: Actions = {
 		const patientStatusRaw = (formData.get('patient_status') ?? '').toString().trim(); // 'willing' | 'unwilling' | ''
 		const clearStatusRaw = (formData.get('clear_status') ?? '').toString().trim(); // '1' if clear pressed
 
+		const commentRaw = (formData.get('comment') ?? '').toString().trim();
+		const unfitRaw = formData.get('unfit');
+		const unfit =
+			unfitRaw === 'on' || unfitRaw === 'true' || unfitRaw === '1' || unfitRaw === 'checked';
+
 		// Normalized boolean for "was called"
 		const was_called = wasCalledRaw === 'on' || wasCalledRaw === 'true' || wasCalledRaw === '1';
 
@@ -62,7 +67,9 @@ export const actions: Actions = {
 					phone: phoneRaw,
 					scheduled_on: scheduledOnRaw,
 					was_called,
-					patient_status: patientStatusRaw || null
+					patient_status: patientStatusRaw || null,
+					comment: commentRaw,
+					unfit
 				}
 			});
 		}
@@ -92,7 +99,9 @@ export const actions: Actions = {
 					phone: phoneRaw,
 					scheduled_on: scheduledOnRaw,
 					was_called,
-					patient_status: patientStatusRaw || null
+					patient_status: patientStatusRaw || null,
+					comment: commentRaw,
+					unfit
 				}
 			});
 		}
@@ -118,8 +127,8 @@ export const actions: Actions = {
 
 		const isWilling = patient_willing === true;
 
-		if (!isWilling) {
-			// If not willing (false or null), do not keep any schedule
+		// If not willing OR marked as unfit, do not keep any schedule
+		if (!isWilling || unfit) {
 			scheduled_on = null;
 		} else {
 			if (scheduledOnRaw) {
@@ -139,7 +148,9 @@ export const actions: Actions = {
 				phone: phoneRaw,
 				was_called,
 				patient_willing,
-				scheduled_on
+				scheduled_on,
+				comment: commentRaw === '' ? null : commentRaw,
+				unfit
 				// updated_at handled by trigger
 			})
 			.eq('id', id)
@@ -153,7 +164,9 @@ export const actions: Actions = {
 					phone: phoneRaw,
 					was_called,
 					patient_willing,
-					scheduled_on
+					scheduled_on,
+					comment: commentRaw,
+					unfit
 				},
 				message: err?.message,
 				details: (err as any)?.details,
@@ -167,7 +180,9 @@ export const actions: Actions = {
 					phone: phoneRaw,
 					scheduled_on: scheduledOnRaw,
 					was_called,
-					patient_status: patientStatusRaw || null
+					patient_status: patientStatusRaw || null,
+					comment: commentRaw,
+					unfit
 				}
 			});
 		}
@@ -180,7 +195,9 @@ export const actions: Actions = {
 				phone: phoneRaw,
 				scheduled_on: scheduledOnRaw,
 				was_called,
-				patient_status: patientStatusRaw || null
+				patient_status: patientStatusRaw || null,
+				comment: commentRaw,
+				unfit
 			}
 		};
 	}

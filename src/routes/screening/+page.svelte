@@ -117,7 +117,7 @@
 						<span
 							class="text-[15px] font-medium text-slate-700 leading-relaxed group-hover:text-emerald-900 transition-colors"
 						>
-							LVEF &lt; 40% documented within the last 2 weeks.
+							LVEF &lt; 40% documented within the last 12 months.
 						</span>
 					</label>
 

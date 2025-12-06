@@ -91,7 +91,9 @@ export const actions: Actions = {
 				phone,
 				was_called: false,
 				patient_willing: null,
-				scheduled_on: null
+				scheduled_on: null,
+				comment: null,
+				unfit: false
 			})
 			.select()
 			.single();

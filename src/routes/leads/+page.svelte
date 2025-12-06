@@ -7,12 +7,22 @@
 	// Sort leads logic
 	const leads = $derived(
 		[...(data.leads ?? [])].sort((a, b) => {
+			// 1) Push unfit leads to the bottom
+			if (a.unfit && !b.unfit) return 1;
+			if (b.unfit && !a.unfit) return -1;
+
+			// 2) Then push unwilling leads to the bottom
 			if (a.patient_willing === false && b.patient_willing !== false) return 1;
 			if (b.patient_willing === false && a.patient_willing !== false) return -1;
+
+			// 3) Then bring scheduled ones up
 			if (a.scheduled_on && !b.scheduled_on) return -1;
 			if (!a.scheduled_on && b.scheduled_on) return 1;
+
+			// 4) Then those already called
 			if (a.was_called && !b.was_called) return -1;
 			if (!a.was_called && b.was_called) return 1;
+
 			return 0;
 		})
 	);
@@ -53,7 +63,7 @@
 								required
 								class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-slate-800 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50/50 transition-all duration-200"
 								placeholder="e.g., Rohan Sharma"
-								value={form?.values?.name ?? ''}
+								value={form?.success ? '' : form?.values?.name ?? ''}
 							/>
 						</div>
 
@@ -74,7 +84,7 @@
 									pattern="[0-9]*"
 									class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-12 pr-4 py-3 text-slate-800 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50/50 transition-all duration-200"
 									placeholder="98765 43210"
-									value={form?.values?.phone ?? ''}
+									value={form?.success ? '' : form?.values?.phone ?? ''}
 								/>
 							</div>
 						</div>
@@ -123,15 +133,18 @@
 							href={`/leads/${lead.id}`}
 							class="block bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:border-emerald-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group relative overflow-hidden"
 						>
+							<!-- Left status strip -->
 							<div
 								class="absolute left-0 top-0 bottom-0 w-1
-                                {lead.scheduled_on
-									? 'bg-emerald-500'
-									: lead.was_called && lead.patient_willing === false
-										? 'bg-red-400'
-										: lead.was_called
-											? 'bg-emerald-300'
-											: 'bg-amber-300'}"
+                                {lead.unfit
+									? 'bg-red-500'
+									: lead.scheduled_on
+										? 'bg-emerald-500'
+										: lead.was_called && lead.patient_willing === false
+											? 'bg-red-400'
+											: lead.was_called
+												? 'bg-sky-400'
+												: 'bg-amber-300'}"
 							></div>
 
 							<div class="flex justify-between items-center pl-2">
@@ -141,30 +154,66 @@
 									>
 										{lead.name}
 									</h3>
-									<div class="mt-1">
-										{#if lead.scheduled_on}
+
+									<div class="mt-1 flex flex-wrap gap-1.5">
+										{#if lead.unfit}
+											<!-- Unfit (always primary); also show Called if applicable -->
+											<span
+												class="inline-flex items-center text-xs font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded-md"
+											>
+												Unfit
+											</span>
+											{#if lead.was_called}
+												<span
+													class="inline-flex items-center text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md"
+												>
+													Called
+												</span>
+											{/if}
+										{:else if lead.scheduled_on}
+											<!-- Scheduled + Called (if they reached this state, they must have been called) -->
 											<span
 												class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md"
 											>
 												📅 {formatDate(lead.scheduled_on)}
 											</span>
+											{#if lead.was_called}
+												<span
+													class="inline-flex items-center text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md"
+												>
+													Called
+												</span>
+											{/if}
 										{:else if lead.was_called && lead.patient_willing === false}
+											<!-- Unwilling + Called -->
 											<span
 												class="inline-flex items-center text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-md"
 											>
 												Unwilling
 											</span>
-										{:else if lead.was_called}
 											<span
-												class="inline-flex items-center text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md"
+												class="inline-flex items-center text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md"
+											>
+												Called
+											</span>
+										{:else if lead.was_called}
+											<!-- Called but not scheduled (your special case) -->
+											<span
+												class="inline-flex items-center text-xs font-medium text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md"
+											>
+												Not scheduled
+											</span>
+											<span
+												class="inline-flex items-center text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md"
 											>
 												Called
 											</span>
 										{:else}
+											<!-- Pending call (distinct color vs Not scheduled) -->
 											<span
 												class="inline-flex items-center text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md"
 											>
-												Pending Call
+												Pending call
 											</span>
 										{/if}
 									</div>
