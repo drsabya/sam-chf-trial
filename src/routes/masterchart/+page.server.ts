@@ -1,5 +1,6 @@
-import type { PageServerLoad } from './$types';
-import { error } from '@sveltejs/kit';
+// src/routes/master-chart/+page.server.ts
+import type { PageServerLoad, Actions } from './$types';
+import { error, fail } from '@sveltejs/kit';
 import { supabase } from '$lib/supabaseClient';
 
 export type ParticipantRow = {
@@ -95,7 +96,7 @@ export const load: PageServerLoad = async () => {
 
 	// If no participants, skip loading visits
 	if (participants.length === 0) {
-	 return {
+		return {
 			participants,
 			visits: [] as VisitRow[]
 		};
@@ -186,4 +187,58 @@ export const load: PageServerLoad = async () => {
 		participants,
 		visits
 	};
+};
+
+// 🔽 NEW: action to update randomization_code
+export const actions: Actions = {
+	updateRandomizationCode: async ({ request }) => {
+		const formData = await request.formData();
+		const participant_id = formData.get('participant_id');
+		const randomization_code_raw = formData.get('randomization_code');
+
+		if (typeof participant_id !== 'string' || !participant_id) {
+			return fail(400, {
+				error: 'Invalid participant id'
+			});
+		}
+
+		let code: string | null = null;
+		if (typeof randomization_code_raw === 'string') {
+			const trimmed = randomization_code_raw.trim().toLowerCase();
+			// allow empty (clear), or 'a' / 'b'
+			if (trimmed === 'a' || trimmed === 'b') {
+				code = trimmed;
+			} else if (trimmed === '') {
+				code = null;
+			} else {
+				return fail(400, {
+					error: 'Randomization code must be "a" or "b"'
+				});
+			}
+		}
+
+		const { error: updateError } = await supabase
+			.from('participants')
+			.update({ randomization_code: code })
+			.eq('id', participant_id);
+
+		if (updateError) {
+			console.error('Error updating randomization_code:', {
+				message: updateError.message,
+				details: (updateError as any)?.details,
+				hint: (updateError as any)?.hint,
+				code: (updateError as any)?.code
+			});
+
+			return fail(500, {
+				error: 'Failed to update randomization code'
+			});
+		}
+
+		return {
+			success: true,
+			participant_id,
+			randomization_code: code
+		};
+	}
 };

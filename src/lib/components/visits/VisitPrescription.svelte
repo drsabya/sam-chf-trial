@@ -37,6 +37,16 @@
 
 	let prescriptionPublicUrl = $derived(r2PublicUrl(visit.prescription_src));
 
+	// Month label based on visit number:
+	// visit 2,3,4 -> "1 month"
+	// visit 5,6,7 -> "3 months"
+	let monthLabel = $derived.by(() => {
+		const v = Number(visit?.visit_number ?? 0);
+		if (v === 2 || v === 3 || v === 4) return '1 month';
+		if (v === 5 || v === 6 || v === 7) return '3 months';
+		return null;
+	});
+
 	/* --------------------------------------------
 	   Helpers
 	--------------------------------------------- */
@@ -207,7 +217,7 @@
 	<div class="flex items-center gap-2 mb-3 px-2">
 		<FileText class="w-4 h-4 text-violet-600" />
 		<h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">
-			{sectionTitle}
+			{sectionTitle} {monthLabel ? `- ${monthLabel}` : ''}
 		</h3>
 	</div>
 

@@ -14,6 +14,7 @@ type ParticipantRow = {
     initials: string | null;
     screening_id: string | null;
     randomization_id: string | null;
+    randomization_code: string | null;
     screening_failure: boolean | null;
 };
 

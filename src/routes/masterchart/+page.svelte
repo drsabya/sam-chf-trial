@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import type { VisitRow } from './+page.server';
+	import { Pencil, Check } from '@lucide/svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -10,6 +11,9 @@
 
 	// Filter state: Default to showing only randomized participants
 	let showRandomizedOnly = $state(true);
+
+	// Edit mode for randomization codes
+	let editRandCodes = $state(false);
 
 	function formatName(participant: any | null) {
 		if (!participant) return 'Unknown participant';
@@ -234,10 +238,28 @@
 								</th>
 								<!-- New Columns -->
 								<th class="text-left px-4 py-3 font-semibold bg-slate-50">Rand. ID</th>
+
+								<!-- Rand. Code header with edit toggle -->
 								<th
 									class="text-left px-4 py-3 font-semibold bg-slate-50 border-r border-slate-200/60"
 								>
-									Rand. Code
+									<div class="flex items-center gap-2">
+										<span>Rand. Code</span>
+										<button
+											type="button"
+											onclick={() => (editRandCodes = !editRandCodes)}
+											class="inline-flex items-center justify-center rounded-full p-1 text-[10px] border border-slate-300 hover:border-emerald-500 hover:text-emerald-600 bg-white shadow-sm transition-colors"
+											title={editRandCodes
+												? 'Stop editing randomization codes'
+												: 'Edit randomization codes'}
+										>
+											{#if editRandCodes}
+												<Check class="w-3 h-3" />
+											{:else}
+												<Pencil class="w-3 h-3" />
+											{/if}
+										</button>
+									</div>
 								</th>
 
 								{#each visitNumbers as vno}
@@ -272,8 +294,55 @@
 									<td class="px-4 py-2.5 font-mono text-slate-600">
 										{participant.randomization_id || '—'}
 									</td>
+
+									<!-- Rand. Code cell: view vs edit mode -->
 									<td class="px-4 py-2.5 font-mono text-slate-600 border-r border-slate-200/60">
-										{participant.randomization_code || '—'}
+										{#if editRandCodes}
+											<form
+												method="POST"
+												action="?/updateRandomizationCode"
+												class="flex items-center gap-1"
+											>
+												<input
+													type="hidden"
+													name="participant_id"
+													value={participant.id}
+												/>
+
+												<select
+													name="randomization_code"
+													class="block w-20 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+													onchange={(event) => {
+														const target = event.currentTarget as HTMLSelectElement;
+														const form = target.form;
+														if (form?.requestSubmit) form.requestSubmit();
+														else form?.submit();
+													}}
+												>
+													<option value="" selected={!participant.randomization_code}>
+														—
+													</option>
+													<option
+														value="a"
+														selected={participant.randomization_code?.toLowerCase() ===
+															'a'}
+													>
+														A
+													</option>
+													<option
+														value="b"
+														selected={participant.randomization_code?.toLowerCase() ===
+															'b'}
+													>
+														B
+													</option>
+												</select>
+											</form>
+										{:else}
+											{participant.randomization_code
+												? participant.randomization_code.toUpperCase()
+												: '—'}
+										{/if}
 									</td>
 
 									{#each visitNumbers as vno}

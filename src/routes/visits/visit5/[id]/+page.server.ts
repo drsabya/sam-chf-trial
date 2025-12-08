@@ -12,6 +12,7 @@ type ParticipantRow = {
 	initials: string | null;
 	screening_id: string | null;
 	randomization_id: string | null;
+	randomization_code: string | null;
 };
 
 type VisitRow = {
@@ -143,7 +144,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const { data: participant, error: participantError } = await supabase
 		.from('participants')
 		.select(
-			'id, first_name, middle_name, last_name, phone, initials, screening_id, randomization_id'
+			'id, first_name, middle_name, last_name, phone, initials, screening_id, randomization_id, randomization_code'
 		)
 		.eq('id', visit.participant_id)
 		.single<ParticipantRow>();

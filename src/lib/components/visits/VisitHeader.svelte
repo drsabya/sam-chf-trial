@@ -60,6 +60,14 @@
 			<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold"
 				>V{visit.visit_number ?? 1}</span
 			>
+
+			{#if participant.randomization_code}
+				<span
+					class="ml-auto inline-flex items-center justify-center w-7 h-7 rounded-full border border-slate-300 text-[10px] font-bold text-slate-600"
+				>
+					{participant.randomization_code}
+				</span>
+			{/if}
 		</div>
 
 		<h1 class="text-3xl font-bold text-slate-900 tracking-tight mt-1">
