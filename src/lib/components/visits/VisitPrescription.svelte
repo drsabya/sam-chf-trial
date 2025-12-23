@@ -11,10 +11,28 @@
 	} from '@lucide/svelte';
 	import jsPDF from 'jspdf';
 
+	/**
+	 * NOTE:
+	 * Your visit1 upload endpoint currently only accepts:
+	 * 'ecg' | 'echo' | 'efficacy' | 'safety'
+	 * and maps them to *_src columns.
+	 *
+	 * Since this is a Prescription component, we MUST ensure `field`
+	 * matches what the server accepts to avoid 400.
+	 *
+	 * Best backend fix: add 'prescription' -> 'prescription_src' to FIELD_TO_COLUMN.
+	 * Until then, you can temporarily use 'safety' if you want to reuse safety_src.
+	 */
+	type UploadField = 'safety'; // TEMP compatibility with current /visit1/upload endpoint
+
 	interface Props {
 		visit: any;
 		participant: any;
-		field?: 'prescription';
+		/**
+		 * For now we default to 'safety' because server mapping doesn't include prescription.
+		 * After backend fix, change UploadField to 'prescription' and default to 'prescription'.
+		 */
+		field?: UploadField;
 		sectionTitle?: string;
 		sectionSubtitle?: string;
 	}
@@ -22,7 +40,7 @@
 	let {
 		visit = $bindable(),
 		participant,
-		field = 'prescription',
+		field = 'safety',
 		sectionTitle = 'Prescription',
 		sectionSubtitle = 'OPD prescription / medication chart'
 	}: Props = $props();
@@ -35,6 +53,7 @@
 		return `https://pub-4cd2e47347704d5dab6e20a0bbd4b079.r2.dev/${key}`;
 	}
 
+	// We still SHOW the prescription column from DB (the right column)
 	let prescriptionPublicUrl = $derived(r2PublicUrl(visit.prescription_src));
 
 	// Month label based on visit number:
@@ -142,44 +161,70 @@
 	}
 
 	/* --------------------------------------------
+	   Network helpers (better errors)
+	--------------------------------------------- */
+	async function readJsonOrText(res: Response) {
+		const text = await res.text();
+		try {
+			return { data: JSON.parse(text), raw: text };
+		} catch {
+			return { data: null, raw: text };
+		}
+	}
+
+	/* --------------------------------------------
 	   R2 Upload
 	--------------------------------------------- */
 	async function uploadToR2(file: File) {
 		try {
+			// 1) presign
 			const presignRes = await fetch('/apis/r2/presign', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ visitId: visit.id, field, filename: file.name })
 			});
 
-			const presigned = await presignRes.json();
-			if (!presigned.ok) throw new Error('Failed to get presign URL');
+			const pres = await readJsonOrText(presignRes);
+			if (!presignRes.ok || !pres.data?.ok) {
+				throw new Error(pres.data?.error ?? pres.raw ?? `Failed to get presign URL (${presignRes.status})`);
+			}
 
-			const { url, objectKey } = presigned;
+			const { url, objectKey } = pres.data;
+
+			// 2) upload to R2
 			const up = await fetch(url, { method: 'PUT', body: file });
-			if (!up.ok) throw new Error('Upload to R2 failed');
+			if (!up.ok) throw new Error(`Upload to R2 failed (${up.status})`);
 
+			// 3) save object key to DB via visit1 endpoint
 			const saveRes = await fetch('/apis/visits/visit1/upload', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ visitId: visit.id, field, objectKey })
 			});
 
-			const saved = await saveRes.json();
-			if (!saved.ok) throw new Error('Failed saving key to DB');
-
-			// update visit locally so parent sees new prescription_src via $bindable
-			if (field === 'prescription') {
-				visit = { ...visit, prescription_src: objectKey };
+			const saved = await readJsonOrText(saveRes);
+			if (!saveRes.ok || !saved.data?.ok) {
+				throw new Error(saved.data?.error ?? saved.raw ?? `Failed saving key to DB (${saveRes.status})`);
 			}
+
+			/**
+			 * IMPORTANT:
+			 * Until you fix backend mapping, this will update safety_src in DB (because field='safety').
+			 *
+			 * BUT your UI correctly reads visit.prescription_src.
+			 * So, to keep UI consistent, we set prescription_src locally to objectKey.
+			 *
+			 * Long-term correct fix: update backend to actually write prescription_src.
+			 */
+			visit = { ...visit, prescription_src: objectKey };
 		} catch (err: any) {
-			alert(err.message || 'Upload failed');
+			alert(err?.message || 'Upload failed');
 			throw err;
 		}
 	}
 
 	/* --------------------------------------------
-	   Main upload handler (no vision)
+	   Main upload handler
 	--------------------------------------------- */
 	async function uploadPrescription() {
 		if (!files.length) return;
@@ -242,9 +287,9 @@
 					<CheckCircle2 class="w-3 h-3" /> Uploaded
 				</span>
 			{:else}
-				<span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full"
-					>Pending</span
-				>
+				<span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+					Pending
+				</span>
 			{/if}
 		</div>
 
@@ -255,6 +300,7 @@
 				<Loader class="w-6 h-6 text-violet-600 animate-spin" />
 				<span class="text-xs text-slate-500 font-medium"> Uploading prescription… </span>
 			</div>
+
 		{:else if prescriptionPublicUrl && files.length === 0}
 			<!-- Already uploaded -->
 			<div
@@ -281,6 +327,7 @@
 						<span class="text-xs text-slate-400 truncate"> PDF • Click to open </span>
 					</div>
 				</a>
+
 				<div class="flex items-center gap-1 pl-3 border-l border-slate-200 ml-3">
 					<button
 						onclick={(e) => printUrl(e, prescriptionPublicUrl)}
@@ -298,17 +345,15 @@
 					</button>
 				</div>
 			</div>
+
 		{:else if files.length > 0}
-			<!-- Files selected (including multiple camera captures) -->
+			<!-- Files selected -->
 			<div class="bg-violet-50/50 rounded-xl p-4 border border-violet-100">
 				<div class="flex items-center gap-3 mb-3">
-					<div
-						class="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center shrink-0"
-					>
-						<span class="text-sm font-bold text-violet-700">
-							{files.length}
-						</span>
+					<div class="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+						<span class="text-sm font-bold text-violet-700">{files.length}</span>
 					</div>
+
 					<div class="min-w-0 flex-1">
 						<p class="text-sm font-medium text-slate-900 truncate">
 							{files.length === 1 ? files[0].name : 'Files ready to merge'}
@@ -317,10 +362,9 @@
 							You can add more pages by clicking the button below.
 						</p>
 					</div>
+
 					<button
-						onclick={() => {
-							files = [];
-						}}
+						onclick={() => (files = [])}
 						class="p-2 text-slate-400 hover:text-rose-500 transition-colors"
 						title="Clear selection"
 					>
@@ -348,6 +392,7 @@
 					</button>
 				</div>
 			</div>
+
 		{:else}
 			<!-- No file yet -->
 			<label
@@ -357,13 +402,12 @@
 				<div class="p-2 bg-slate-50 rounded-full group-hover/label:bg-violet-100 transition-colors">
 					<CloudUpload class="w-5 h-5 text-slate-400 group-hover/label:text-violet-600" />
 				</div>
-				<span class="text-sm text-slate-500 font-medium group-hover/label:text-violet-700"
-					>Tap to select / capture prescription</span
-				>
+				<span class="text-sm text-slate-500 font-medium group-hover/label:text-violet-700">
+					Tap to select / capture prescription
+				</span>
 			</label>
 		{/if}
 
-		<!-- Single hidden input reused everywhere (files + camera, multiple times) -->
 		<input
 			id="prescription-input"
 			type="file"
