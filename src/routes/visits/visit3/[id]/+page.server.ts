@@ -89,6 +89,7 @@ export const load: PageServerLoad = async ({ params }) => {
 				'due_date',
 				'visit_date',
 				'efficacy_src',
+				'prescription_src',
 				'gsh',
 				'tnf_alpha',
 				'il6',

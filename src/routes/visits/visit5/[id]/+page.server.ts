@@ -104,6 +104,7 @@ export const load: PageServerLoad = async ({ params }) => {
 				'due_date',
 				'visit_date',
 				'voucher_given',
+				'prescription_src',
 				'safety_src',
 				'hb',
 				'rbcs',

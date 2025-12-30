@@ -74,7 +74,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const { data: visit, error: visitError } = await supabase
 		.from('visits')
 		.select(
-			'id, participant_id, visit_number, created_at, scheduled_on, due_date, visit_date, voucher_given'
+			'id, participant_id, visit_number, prescription_src, created_at, scheduled_on, due_date, visit_date, voucher_given'
 		)
 		.eq('id', id)
 		.single<VisitRow>();

@@ -117,6 +117,7 @@ export const load: PageServerLoad = async ({ params }) => {
 				'scheduled_on',
 				'due_date',
 				'visit_date',
+				'prescription_src',
 				'echo_src',
 				'ecg_src',
 				'efficacy_src',

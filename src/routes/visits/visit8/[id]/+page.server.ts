@@ -126,6 +126,7 @@ export const load: PageServerLoad = async ({ params }) => {
 				'efficacy_src',
 				'safety_src',
 				'echo_lvef',
+				'prescription_src',
 
 				// Visit 8 efficacy
 				'nt_pro_bnp',
